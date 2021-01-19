@@ -67,9 +67,43 @@ teams_small_a %>%
 
 library(pivottabler)
 # arguments:  qhpvt(dataFrame, rows, columns, calculations, ...)
-qhpvt(bhmtrains, "TOC", "TrainCategory", "n()") # TOC = Train Operating Company 
+qhpvt(teams_small_a, "Team", "W_L", n()) # TOC = Train Operating Company 
 
 ```
 
+```{r}
+
+```
+
+```{r}
+res <-  as.data.frame(matrix(NA, nrow = nrow(teams), ncol = ncol(20)))
+                      
+for (i in 1:nrow(teams)){
+  temp <- teams_small_a[teams_small_a$Team == teams$TeamID[i], ]
+  res[i, 1] <-  sum(temp$FGM)/sum(temp$FGA) 
+  res[i,2] <- mean(temp$Score)
+  res[i,3] <- mean(temp$NumOT)
+  res[i, 4] <- mean(temp$FGA)
+  res[i, 5] <- sum(temp$FGM3)/sum(temp$FGA3)
+  res[i,6] <- mean(temp$FGA3)
+  res[i, 7] <- sum(temp$FTM)/sum(temp$FTA)
+  res[i, 8] <-  mean(temp$FTA)
+  res[i, 9] <- mean(temp$OR)
+  res[i, 10] <- mean(temp$DR)
+  res[i, 11] <- mean(temp$Ast)
+  res[i, 12] <- mean(temp$TO)
+  res[i, 13] <- mean(temp$Stl)
+  res[i, 14] <- mean(temp$Blk)
+  res[i, 15] <- mean(temp$PF)
+  res[i, 16] <- mean(temp$Score_diff)
+  res[i, 17] <- sum(temp$W_L)
+  res[i, 18] <- length(temp$Score) - sum(temp$W_L)
+  
+}
+
+names(res) <-  c("FG_Prec", "Avg_Score","AVG_OT", "Avg_FGA", "FG3_Prec", "Avg_FGA3", "FT_Prec", "AVG_FTA", "AVG_OR", "AVG_DR", "AVG_AST", "ACG_TO", "AvG_Stl", "AVG_Blk", "AVG_PF", "AVG_Scor_Diff", "Num_Wins","Num_Loss")
+
+head(res)
+```
 
 
