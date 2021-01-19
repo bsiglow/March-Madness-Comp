@@ -10,14 +10,15 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-plug <-  read.csv("https://raw.githubusercontent.com/bsiglow/March-Madness-Comp/master/MRegularSeasonDetailedResults.csv?token=ARJTFRUCD5NU3ZZBZVG67BTAA4HB2")
+OG_RegSeasonStat <-  read.csv("https://www.dropbox.com/s/di27y44wsl92dqs/MRegularSeasonDetailedResults.csv?dl=1")
+
 ```
 
 ```{r}
-str(plug) # will need to merge in rank data from the teams excel doc , currently working on individual team table 
+str(OG_RegSeasonStat) # will need to merge in rank data from the teams excel doc , currently working on individual team table 
 ```
 
 ```{r}
-
+teams <-  teams <- unique(c(OG_RegSeasonStat$WTeamID, OG_RegSeasonStat$LTeamID))
 ```
 
