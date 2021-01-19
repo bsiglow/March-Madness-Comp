@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
 ```
 
 ```{r}
@@ -15,10 +16,60 @@ OG_RegSeasonStat <-  read.csv("https://www.dropbox.com/s/di27y44wsl92dqs/MRegula
 ```
 
 ```{r}
-str(OG_RegSeasonStat) # will need to merge in rank data from the teams excel doc , currently working on individual team table 
+str(OG_RegSeasonStat) # will need to merge in rank data from the teams excel doc , currently working on individual team table
+teams_pros <-  OG_RegSeasonStat # combining season and team ids to create a team data frame 
+teams_pros$WTIDSeason <- paste(teams_pros$Season, teams_pros$WTeamID)
+teams_pros$LTIDSeason <-paste(teams_pros$Season, teams_pros$LTeamID)
 ```
 
 ```{r}
-teams <-  teams <- unique(c(OG_RegSeasonStat$WTeamID, OG_RegSeasonStat$LTeamID))
+teams <-  teams <- as.data.frame(unique(c(teams_pros$LTIDSeason, teams_pros$WTIDSeason)))
+colnames(teams)[1] <-  "TeamID"
 ```
+
+```{r :: Creating winning team data frame}
+teams_prossmall <-  teams_pros[1:10,] # small data frame to confirm cleaning
+a_teams_prossmall <-  teams_prossmall[,-36] # Removing Losing team info 
+a_teams_prossmall$Score_diff <-  a_teams_prossmall$WScore - a_teams_prossmall$LScore # Creating score differenctial
+a_teams_prossmall <-  a_teams_prossmall[,grep(pattern = "L", colnames(a_teams_prossmall),ignore.case = FALSE , invert = TRUE)] # Removing all columns relating to losing team 
+colnames(a_teams_prossmall)[19] <- "Team" # Row name change
+colCleanW <- function(x){ colnames(x) <- gsub("W", "", colnames(x)); x }  # Removing all prefix W in colnames
+a_teams_prossmall <-  colCleanW(a_teams_prossmall) # Runnig function
+a_teams_prossmall <-  a_teams_prossmall[,-c(1:3)] # Removing redundandt columns, can be removed to spot check 
+```
+
+
+```{r :: Creating only loser data}
+b_teams_prossmall <-  teams_prossmall[,-35] # Removing Winning team info 
+b_teams_prossmall$Score_diff <-  b_teams_prossmall$LScore - b_teams_prossmall$WScore # Creating score differential
+b_teams_prossmall <-  b_teams_prossmall[,grep(pattern = "W", colnames(b_teams_prossmall),ignore.case = FALSE , invert = TRUE)] # Removing all columns relating to losing team 
+colnames(b_teams_prossmall)[19] <- "Team" # Row name change
+colCleanW <- function(x){ colnames(x) <- gsub("L", "", colnames(x)); x }  # Removing all prefix W in colnames
+b_teams_prossmall <-  colCleanW(b_teams_prossmall) # Running function
+b_teams_prossmall <-  b_teams_prossmall[,-c(1:3)] # Removing redundant columns, can be removed to spot check
+```
+
+```{r :: Creating win loss column}
+teams_small_a <-  rbind(a_teams_prossmall,b_teams_prossmall) # creating winning and losing team stats in small format
+
+teams_small_a$W_L <-  as.numeric(teams_small_a$Score_diff > 0) # Creating win loss column 
+```
+
+```{r :: Compressing data frame}
+length(unique(teams_small_a$Team))
+
+
+teams_small_a %>%
+  select(Team) %>%
+  unique() %>%
+  count()
+
+
+library(pivottabler)
+# arguments:  qhpvt(dataFrame, rows, columns, calculations, ...)
+qhpvt(bhmtrains, "TOC", "TrainCategory", "n()") # TOC = Train Operating Company 
+
+```
+
+
 
