@@ -171,3 +171,10 @@ check_rank_values_all <-  rank_test %>%
 check_rank_values_all
 ```
 
+```{r}
+Team_table_csv <-  read.csv("https://www.dropbox.com/s/6m119xdn1z5ysqc/Teams_Table?dl=1") # Read in of final team table so no need to use long loop. 
+
+summary(Team_table_csv) # Created 5807 NA values through the loop. This will need to be reviewed. 
+summary(rank_table)
+```
+
