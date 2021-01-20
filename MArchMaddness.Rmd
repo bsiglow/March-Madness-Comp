@@ -98,18 +98,15 @@ rank_table <-  read.csv("https://www.dropbox.com/s/fi3m97x6424qjrb/MMasseyOrdina
 rank_test <- rank_table
 
 
+#der <-  rank_test %>%
+ # filter((Season == 2013) & (TeamID == 1104))
+#head(der)
 
+#min(der$OrdinalRank)
 
+#length(unique(rank_test$SystemName))
 
-der <-  rank_test %>%
-  filter((Season == 2013) & (TeamID == 1104))
-head(der)
-
-min(der$OrdinalRank)
-
-length(unique(rank_test$SystemName))
-
-unique(rank_test$SystemName)
+#unique(rank_test$SystemName)
 ```
 
 ```{r}
@@ -117,30 +114,36 @@ rank_test$TeamID_Year <-  paste(rank_table$Season, rank_table$TeamID)
 
 ```
 
-```{r}
-#rank_test_small <-  rank_test[1:500,]
-#teams_all1_small <- teams_all1[1:500,]
 
-#str(rank_test_small)
+```{r :: loop check}
 
-# check <-  rank_test_small %>%
-  #filter(TeamID_Year == "2003 1328") %>%
-  #select(OrdinalRank) %>%
-  #as.data.frame()
+rank_test_small <-  rank_test[1:1000,]
+teams_all1_small <- teams_all1[1:1000,]
 
-#rank_test_small$TeamID_Year
 
-#T_rank <- as.data.frame(rank_test_small$OrdinalRank[rank_test_small$RankingDayNum == max(rank_test_small$RankingDayNum)], rank_test_small$TeamID_Year)
+check_finalrank_value <-  rank_test_small$OrdinalRank[rank_test_small$RankingDayNum == max(rank_test_small$RankingDayNum)] # Checking if this results in the correct value for Final_Rank
 
-#rank_test$final_rank <- rank_test$OrdinalRank[rank_test$RankingDayNum == max(rank_test$RankingDayNum)] 
+# We cannot have a final ranking, because we do not have one final day ranking, we will need to review using specific ranking columns or other processing. 
 
-Final_rank <- function(x){x[rank_test$RankingDayNum == max(rank_test$RankingDayNum)] ; x }  # Filling the value for final rank in effort to speed up loop
+check_rank_values <-  rank_test_small %>%
+  filter(TeamID_Year == "2003 1328") %>%
+  select(c(OrdinalRank , RankingDayNum)) %>%
+  as.data.frame()
+check_rank_values # Checking if we determine the best rank
 
-rank_test$Final_Rank <- Final_rank(rank_test$OrdinalRank) # Running function 
 
-#head(rank_test$Final_Rank)
+
+
+for (i in 1:nrow(teams_all1_small)){
+  temp <- rank_test_small[rank_test_small$TeamID_Year == teams_all1_small$TeamID_Year[i], ]
+  teams_all1_small[i,21] <- mean(temp$OrdinalRank)
+  teams_all1_small[i,22] <- min(temp$OrdinalRank)
+  
+}
+
 
 ```
+
 
 
 ```{r :: Do not run following loop to combine data if you do not need to}
@@ -148,8 +151,23 @@ for (i in 1:nrow(teams_all1)){
   temp <- rank_test[rank_test$TeamID_Year == teams_all1$TeamID_Year[i], ]
   teams_all1[i,21] <- mean(temp$OrdinalRank)
   teams_all1[i,22] <- min(temp$OrdinalRank)
-  teams_all1[i,23] <- temp$Final_Rank[i]
-  
 }
+
+# Saving to csv, however could also add mode and median of rank or create chart of each ranking conglomerant 
+```
+
+```{r}
+getwd()
+Teams_rank <-  teams_all1
+write.csv(teams_all1, file = "Teams_Table")
+```
+
+
+```{r}
+check_rank_values_all <-  rank_test %>%
+  filter(TeamID_Year == "2003 1328") %>%
+  select(c(OrdinalRank , RankingDayNum)) %>%
+  as.data.frame()
+check_rank_values_all
 ```
 
