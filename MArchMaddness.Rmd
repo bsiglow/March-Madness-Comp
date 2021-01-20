@@ -81,6 +81,7 @@ for (i in 1:nrow(teams)){
   res[i, 17] <- mean(temp$Score_diff)
   res[i, 18] <- sum(temp$W_L)
   res[i, 19] <- length(temp$Score) - sum(temp$W_L)
+  res[i, 20] <- sum(temp$FGA - temp$FGA3)/sum(temp$FGA3)
   
 }
 
@@ -117,21 +118,37 @@ rank_test$TeamID_Year <-  paste(rank_table$Season, rank_table$TeamID)
 ```
 
 ```{r}
-rank_test_small <-  rank_test[1:1000,]
-teams_all1_small <- teams_all1[1:1000,]
+#rank_test_small <-  rank_test[1:500,]
+#teams_all1_small <- teams_all1[1:500,]
 
-str(rank_test_small)
+#str(rank_test_small)
 
-check <-  rank_test_small %>%
-  filter(TeamID_Year == "2003 1328") %>%
-  select(OrdinalRank) %>%
-  as.data.frame()
+# check <-  rank_test_small %>%
+  #filter(TeamID_Year == "2003 1328") %>%
+  #select(OrdinalRank) %>%
+  #as.data.frame()
 
-head(check)
+#rank_test_small$TeamID_Year
 
-for (i in 1:nrow(teams_all1_small)){
-  temp <- rank_test_small[rank_test_small$TeamID_Year == teams_all1_small$TeamID_Year[i], ]
-  teams_all1_small[i,21] <- mean(temp$OrdinalRank)
+#T_rank <- as.data.frame(rank_test_small$OrdinalRank[rank_test_small$RankingDayNum == max(rank_test_small$RankingDayNum)], rank_test_small$TeamID_Year)
+
+#rank_test$final_rank <- rank_test$OrdinalRank[rank_test$RankingDayNum == max(rank_test$RankingDayNum)] 
+
+Final_rank <- function(x){x[rank_test$RankingDayNum == max(rank_test$RankingDayNum)] ; x }  # Filling the value for final rank in effort to speed up loop
+
+rank_test$Final_Rank <- Final_rank(rank_test$OrdinalRank) # Running function 
+
+#head(rank_test$Final_Rank)
+
+```
+
+
+```{r :: Do not run following loop to combine data if you do not need to}
+for (i in 1:nrow(teams_all1)){
+  temp <- rank_test[rank_test$TeamID_Year == teams_all1$TeamID_Year[i], ]
+  teams_all1[i,21] <- mean(temp$OrdinalRank)
+  teams_all1[i,22] <- min(temp$OrdinalRank)
+  teams_all1[i,23] <- temp$Final_Rank[i]
   
 }
 ```
