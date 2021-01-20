@@ -16,7 +16,7 @@ OG_RegSeasonStat <-  read.csv("https://www.dropbox.com/s/di27y44wsl92dqs/MRegula
 ```
 
 ```{r}
-str(OG_RegSeasonStat) # will need to merge in rank data from the teams excel doc , currently working on individual team table
+#str(OG_RegSeasonStat) # will need to merge in rank data from the teams excel doc , currently working on individual team table
 teams_pros <-  OG_RegSeasonStat # combining season and team ids to create a team data frame 
 teams_pros$WTIDSeason <- paste(teams_pros$Season, teams_pros$WTeamID)
 teams_pros$LTIDSeason <-paste(teams_pros$Season, teams_pros$LTeamID)
@@ -28,82 +28,111 @@ colnames(teams)[1] <-  "TeamID"
 ```
 
 ```{r :: Creating winning team data frame}
-teams_prossmall <-  teams_pros[1:10,] # small data frame to confirm cleaning
-a_teams_prossmall <-  teams_prossmall[,-36] # Removing Losing team info 
-a_teams_prossmall$Score_diff <-  a_teams_prossmall$WScore - a_teams_prossmall$LScore # Creating score differenctial
-a_teams_prossmall <-  a_teams_prossmall[,grep(pattern = "L", colnames(a_teams_prossmall),ignore.case = FALSE , invert = TRUE)] # Removing all columns relating to losing team 
-colnames(a_teams_prossmall)[19] <- "Team" # Row name change
+#teams_prossmall <-  teams_pros[1:10,] # small data frame to confirm cleaning
+#a_teams_prossmall <-  teams_prossmall[,-36] # Removing Losing team info (Smallframe)
+a_teams_pros <-  teams_pros[,-36] # Removing Losing team info 
+a_teams_pros$Score_diff <-  a_teams_pros$WScore - a_teams_pros$LScore # Creating score differenctial
+a_teams_pros <-  a_teams_pros[,grep(pattern = "L", colnames(a_teams_pros),ignore.case = FALSE , invert = TRUE)] # Removing all columns relating to losing team 
+colnames(a_teams_pros)[19] <- "Team" # Row name change
 colCleanW <- function(x){ colnames(x) <- gsub("W", "", colnames(x)); x }  # Removing all prefix W in colnames
-a_teams_prossmall <-  colCleanW(a_teams_prossmall) # Runnig function
-a_teams_prossmall <-  a_teams_prossmall[,-c(1:3)] # Removing redundandt columns, can be removed to spot check 
+a_teams_pros <-  colCleanW(a_teams_pros) # Running function
+a_teams_pros <-  a_teams_pros[,-c(1:3)] # Removing redundant columns, can be removed to spot check 
 ```
 
 
 ```{r :: Creating only loser data}
-b_teams_prossmall <-  teams_prossmall[,-35] # Removing Winning team info 
-b_teams_prossmall$Score_diff <-  b_teams_prossmall$LScore - b_teams_prossmall$WScore # Creating score differential
-b_teams_prossmall <-  b_teams_prossmall[,grep(pattern = "W", colnames(b_teams_prossmall),ignore.case = FALSE , invert = TRUE)] # Removing all columns relating to losing team 
-colnames(b_teams_prossmall)[19] <- "Team" # Row name change
+b_teams_pros <-  teams_pros[,-35] # Removing Winning team info 
+b_teams_pros$Score_diff <-  b_teams_pros$LScore - b_teams_pros$WScore # Creating score differential
+b_teams_pros <-  b_teams_pros[,grep(pattern = "W", colnames(b_teams_pros),ignore.case = FALSE , invert = TRUE)] # Removing all columns relating to losing team 
+colnames(b_teams_pros)[19] <- "Team" # Row name change
 colCleanW <- function(x){ colnames(x) <- gsub("L", "", colnames(x)); x }  # Removing all prefix W in colnames
-b_teams_prossmall <-  colCleanW(b_teams_prossmall) # Running function
-b_teams_prossmall <-  b_teams_prossmall[,-c(1:3)] # Removing redundant columns, can be removed to spot check
+b_teams_pros <-  colCleanW(b_teams_pros) # Running function
+b_teams_pros <-  b_teams_pros[,-c(1:3)] # Removing redundant columns, can be removed to spot check
 ```
 
 ```{r :: Creating win loss column}
-teams_small_a <-  rbind(a_teams_prossmall,b_teams_prossmall) # creating winning and losing team stats in small format
+#teams_small_a <-  rbind(a_teams_prossmall,b_teams_prossmall) # creating winning and losing team stats in small format
+teams_all <-  rbind(a_teams_pros, b_teams_pros) # Creating team Data Frame
 
-teams_small_a$W_L <-  as.numeric(teams_small_a$Score_diff > 0) # Creating win loss column 
+teams_all$W_L <-  as.numeric(teams_all$Score_diff > 0) # Creating win loss column 
 ```
 
-```{r :: Compressing data frame}
-length(unique(teams_small_a$Team))
-
-
-teams_small_a %>%
-  select(Team) %>%
-  unique() %>%
-  count()
-
-
-library(pivottabler)
-# arguments:  qhpvt(dataFrame, rows, columns, calculations, ...)
-qhpvt(teams_small_a, "Team", "W_L", n()) # TOC = Train Operating Company 
-
-```
-
-```{r}
-
-```
-
-```{r}
-res <-  as.data.frame(matrix(NA, nrow = nrow(teams), ncol = ncol(20)))
+```{r :: Loop to create each year/team results}
+res <-  as.data.frame(matrix(NA, nrow = nrow(teams), ncol = 25))
                       
 for (i in 1:nrow(teams)){
-  temp <- teams_small_a[teams_small_a$Team == teams$TeamID[i], ]
-  res[i, 1] <-  sum(temp$FGM)/sum(temp$FGA) 
-  res[i,2] <- mean(temp$Score)
-  res[i,3] <- mean(temp$NumOT)
-  res[i, 4] <- mean(temp$FGA)
-  res[i, 5] <- sum(temp$FGM3)/sum(temp$FGA3)
-  res[i,6] <- mean(temp$FGA3)
-  res[i, 7] <- sum(temp$FTM)/sum(temp$FTA)
-  res[i, 8] <-  mean(temp$FTA)
-  res[i, 9] <- mean(temp$OR)
-  res[i, 10] <- mean(temp$DR)
-  res[i, 11] <- mean(temp$Ast)
-  res[i, 12] <- mean(temp$TO)
-  res[i, 13] <- mean(temp$Stl)
-  res[i, 14] <- mean(temp$Blk)
-  res[i, 15] <- mean(temp$PF)
-  res[i, 16] <- mean(temp$Score_diff)
-  res[i, 17] <- sum(temp$W_L)
-  res[i, 18] <- length(temp$Score) - sum(temp$W_L)
+  temp <- teams_all[teams_all$Team == teams$TeamID[i], ]
+  res[i,1] <- temp$Team[i]
+  res[i, 2] <-  sum(temp$FGM)/sum(temp$FGA) 
+  res[i,3] <- mean(temp$Score)
+  res[i,4] <- mean(temp$NumOT)
+  res[i, 5] <- mean(temp$FGA)
+  res[i, 6] <- sum(temp$FGM3)/sum(temp$FGA3)
+  res[i,7] <- mean(temp$FGA3)
+  res[i, 8] <- sum(temp$FTM)/sum(temp$FTA)
+  res[i, 9] <-  mean(temp$FTA)
+  res[i, 10] <- mean(temp$OR)
+  res[i, 11] <- mean(temp$DR)
+  res[i, 12] <- mean(temp$Ast)
+  res[i, 13] <- mean(temp$TO)
+  res[i, 14] <- mean(temp$Stl)
+  res[i, 15] <- mean(temp$Blk)
+  res[i, 16] <- mean(temp$PF)
+  res[i, 17] <- mean(temp$Score_diff)
+  res[i, 18] <- sum(temp$W_L)
+  res[i, 19] <- length(temp$Score) - sum(temp$W_L)
   
 }
 
-names(res) <-  c("FG_Prec", "Avg_Score","AVG_OT", "Avg_FGA", "FG3_Prec", "Avg_FGA3", "FT_Prec", "AVG_FTA", "AVG_OR", "AVG_DR", "AVG_AST", "ACG_TO", "AvG_Stl", "AVG_Blk", "AVG_PF", "AVG_Scor_Diff", "Num_Wins","Num_Loss")
+names(res) <-  c("TeamID_Year", "FG_Prec", "Avg_Score","AVG_OT", "Avg_FGA", "FG3_Prec", "Avg_FGA3", "FT_Prec", "AVG_FTA", "AVG_OR", "AVG_DR", "AVG_AST", "ACG_TO", "AvG_Stl", "AVG_Blk", "AVG_PF", "AVG_Scor_Diff", "Num_Wins","Num_Loss","2pt_3pt_ratio" , "Avg_Rank", "Best_Rank", "Final_Rank")
 
-head(res)
+#head(res)
+
+teams_all1 <-  res
 ```
 
+```{r}
+rank_table <-  read.csv("https://www.dropbox.com/s/fi3m97x6424qjrb/MMasseyOrdinals.csv?dl=1")
+
+rank_test <- rank_table
+
+
+
+
+
+der <-  rank_test %>%
+  filter((Season == 2013) & (TeamID == 1104))
+head(der)
+
+min(der$OrdinalRank)
+
+length(unique(rank_test$SystemName))
+
+unique(rank_test$SystemName)
+```
+
+```{r}
+rank_test$TeamID_Year <-  paste(rank_table$Season, rank_table$TeamID)
+
+```
+
+```{r}
+rank_test_small <-  rank_test[1:1000,]
+teams_all1_small <- teams_all1[1:1000,]
+
+str(rank_test_small)
+
+check <-  rank_test_small %>%
+  filter(TeamID_Year == "2003 1328") %>%
+  select(OrdinalRank) %>%
+  as.data.frame()
+
+head(check)
+
+for (i in 1:nrow(teams_all1_small)){
+  temp <- rank_test_small[rank_test_small$TeamID_Year == teams_all1_small$TeamID_Year[i], ]
+  teams_all1_small[i,21] <- mean(temp$OrdinalRank)
+  
+}
+```
 
