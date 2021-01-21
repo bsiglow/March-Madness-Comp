@@ -172,30 +172,32 @@ net_score <- rank_test %>%
 teams_net <- as.data.frame(unique(net_score$TeamID_Year))
 colnames(teams_net)[1] <- "TeamID_Year" # Creating unique names
 
-cc1 <-  as.data.frame(matrix(NA, nrow = nrow(teams_net), ncol = 2)) # data frame for NET rank loop
+cc1 <-  as.data.frame(matrix(NA, nrow = nrow(teams_net), ncol = 3)) # data frame for NET rank loop
                       
 for (i in 1:nrow(teams_net)){
   temp <- net_score[net_score$TeamID_Year == teams_net$TeamID_Year[i], ]
   cc1[i, 1] <- teams_net$TeamID_Year[i]
   cc1[i, 2] <- max(temp$RankingDayNum)
+  cc1[i, 3] <- temp$OrdinalRank[nrow(temp)] # Pull in the final score
   
 } # loop to confirm most recent rank
 
-cc2 <- merge(cc1, net_score, by.x = c("V1", "V2"), by.y = c("TeamID_Year", "RankingDayNum"), all.x = TRUE) # Merging data frame to have the final NET rank
+#cc2 <- merge(cc1, net_score, by.x = c("V1", "V2"), by.y = c("TeamID_Year", "RankingDayNum"), all.x = TRUE) # Merging data frame to have the final NET rank
 
-cc2 <- cc2[,c(1,3)] # removing extra columns
-
-
-Team_Table_NET <- merge(Team_table_csv, cc2, by.x = "TeamID_Year", by.y = "V1", all.x = TRUE) # merginig to create table with final NET score
+#cc2 <- cc2[,c(1,3)] # removing extra columns
 
 
-Team_Table_NET <- Team_Table_NET[,-c(2, 24,25, 26)] # Removing uneeded columns
+#Team_Table_NET <- merge(Team_table_csv, cc2, by.x = "TeamID_Year", by.y = "V1", all.x = TRUE) # merginig to create table with final NET score
 
-colnames(Team_Table_NET)[23] <- "Final_NET_Rank" # rename new column
+
+#Team_Table_NET <- Team_Table_NET[,-c(2, 24,25, 26)] # Removing uneeded columns
+
+#colnames(Team_Table_NET)[23] <- "Final_NET_Rank" # rename new column
 ```
 
 ```{r :: Creating Final_AP}
 
+# Add the MAX ap score then add 26 + 1 for AP score 
 
 ap_score <- rank_test %>%
   filter(SystemName == "AP") %>%
@@ -234,6 +236,8 @@ colnames(Team_Table_NET_AP)[24] <- "Final_AP_Rank" # Renaming final data frame
 ## Need to replace NAS
 ### For AP (occured since 2003) replace NAs with 26 + 1 or Max(ap_score$OrdinalScore) + 1
 ### For NET the scores are not in the data until 2019 we need to determine best process to deal with this posssibly split the data
+
+
 ##Create game level data
 ```{r :: game_level processing}
 game_level <- OG_RegSeasonStat
@@ -306,4 +310,4 @@ game_level_all$Tie <- as.numeric(game_level_all$Score_diff == 0)
 sum(game_level_all$Tie)
 ```
 
-
+# Final game level stats comparison loop for r team and o team then cbind them. 
