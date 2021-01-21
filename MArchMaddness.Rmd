@@ -229,4 +229,10 @@ colnames(Team_Table_NET_AP)[24] <- "Final_AP_Rank" # Renaming final data frame
 
 ```
 
+# Next Steps 
+## Need to replace NAS
+### For AP (occured since 2003) replace NAs with 26 + 1 or Max(ap_score$OrdinalScore) + 1
+### For NET the scores are not in the data until 2019 we need to determuine best process to deal with this posssibly split the data
+##Create game level data 
+
 
