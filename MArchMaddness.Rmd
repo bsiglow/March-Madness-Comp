@@ -10,12 +10,12 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 ```
 
-```{r}
+```{r :: Read in original Data}
 OG_RegSeasonStat <-  read.csv("https://www.dropbox.com/s/di27y44wsl92dqs/MRegularSeasonDetailedResults.csv?dl=1")
 
 ```
 
-```{r}
+```{r :: Pre-processing splitting teams}
 #str(OG_RegSeasonStat) # will need to merge in rank data from the teams excel doc , currently working on individual team table
 
 teams_pros <-  OG_RegSeasonStat # combining season and team ids to create a team data frame 
@@ -26,7 +26,7 @@ teams_pros$LTIDSeason <-paste(teams_pros$Season, teams_pros$LTeamID)
 sum(is.na(teams_pros$LTeamID))
 ```
 
-```{r}
+```{r :: Creating Team ID}
 teams <- as.data.frame(unique(c(teams_pros$LTIDSeason, teams_pros$WTIDSeason)))
 sum(is.na(teams$`unique(c(teams_pros$LTIDSeason, teams_pros$WTIDSeason))`))
 colnames(teams)[1] <-  "TeamID"
@@ -45,7 +45,7 @@ a_teams_pros <-  a_teams_pros[,-c(1:3)] # Removing redundant columns, can be rem
 ```
 
 
-```{r :: Creating only loser data}
+```{r :: Creating losing team data frame}
 b_teams_pros <-  teams_pros[,-35] # Removing Winning team info 
 b_teams_pros$Score_diff <-  b_teams_pros$LScore - b_teams_pros$WScore # Creating score differential
 b_teams_pros <-  b_teams_pros[,grep(pattern = "W", colnames(b_teams_pros),ignore.case = FALSE , invert = TRUE)] # Removing all columns relating to losing team 
@@ -63,7 +63,7 @@ teams_all$W_L <-  as.numeric(teams_all$Score_diff > 0) # Creating win loss colum
 sum(is.na(teams_all$Team))
 ```
 
-```{r}
+```{r :: Spot check}
 length(unique(teams$TeamID))
 length(unique(teams_all$Team))
 ```
@@ -74,7 +74,7 @@ res <-  as.data.frame(matrix(NA, nrow = nrow(teams), ncol = 25))
                       
 for (i in 1:nrow(teams)){
   temp <- teams_all[teams_all$Team == teams$TeamID[i], ]
-  res[i,1] <- teams$TeamID[i]
+  res[i,1] <- teams$TeamID[i] # To add in individual team id I believe this works
   res[i, 2] <-  sum(temp$FGM)/sum(temp$FGA) 
   res[i,3] <- mean(temp$Score)
   res[i,4] <- mean(temp$NumOT)
@@ -97,18 +97,14 @@ for (i in 1:nrow(teams)){
   
 }
 
-names(res) <-  c("TeamID_Year", "FG_Prec", "Avg_Score","AVG_OT", "Avg_FGA", "FG3_Prec", "Avg_FGA3", "FT_Prec", "AVG_FTA", "AVG_OR", "AVG_DR", "AVG_AST", "ACG_TO", "AvG_Stl", "AVG_Blk", "AVG_PF", "AVG_Scor_Diff", "Num_Wins","Num_Loss","2pt_3pt_ratio" , "Avg_Rank", "Best_Rank", "Final_NET_Rank", "Final_AP_Rank")
-
-#head(res)
-
-sum(is.na(res$TeamID_Year))
+names(res) <-  c("TeamID_Year", "FG_Prec", "Avg_Score","AVG_OT", "Avg_FGA", "FG3_Prec", "Avg_FGA3", "FT_Prec", "AVG_FTA", "AVG_OR", "AVG_DR", "AVG_AST", "ACG_TO", "AvG_Stl", "AVG_Blk", "AVG_PF", "AVG_Scor_Diff", "Num_Wins","Num_Loss","2pt_3pt_ratio" , "Avg_Rank", "Best_Rank", "Final_NET_Rank", "Final_AP_Rank") # Rename
 
 teams_all1 <-  res
 
-length(unique(teams_all$TeamID_Year))
+length(unique(teams_all$TeamID_Year)) # Spot Check
 ```
 
-```{r}
+```{r :: Read in rank data for rank columns}
 rank_table <-  read.csv("https://www.dropbox.com/s/fi3m97x6424qjrb/MMasseyOrdinals.csv?dl=1")
 
 rank_test <- rank_table
@@ -124,7 +120,7 @@ rank_test <- rank_table
 
 ```
 
-```{r}
+```{r :: Creating teamID for rank table}
 rank_test$TeamID_Year <-  paste(rank_table$Season, rank_table$TeamID)
 
 length(unique(rank_test$TeamID_Year))
@@ -133,7 +129,7 @@ length(unique(rank_test$TeamID_Year))
 
 
 
-```{r :: Do not run following loop to combine data if you do not need to}
+```{r :: Longer loop for rank addition}
 for (i in 1:nrow(teams_all1)){
   temp <- rank_test[rank_test$TeamID_Year == teams_all1$TeamID_Year[i], ]
   teams_all1[i,21] <- mean(temp$OrdinalRank, na.rm = TRUE)
@@ -143,13 +139,13 @@ for (i in 1:nrow(teams_all1)){
 # Saving to csv, however could also add mode and median of rank or create chart of each ranking conglomerant 
 ```
 
-```{r}
+```{r :: Read out to csv}
 Teams_rank <-  teams_all1
 write.csv(Teams_rank, file = "Teams_Table")
 ```
 
 
-```{r}
+```{r :: Spot check}
 check_rank_values_all <-  rank_test %>%
   filter(TeamID_Year == "2003 1328") %>%
   select(c(OrdinalRank , RankingDayNum)) %>%
@@ -157,7 +153,7 @@ check_rank_values_all <-  rank_test %>%
 check_rank_values_all
 ```
 
-```{r}
+```{r :: Read in above made CSV from drop box}
 Team_table_csv <-  read.csv("https://www.dropbox.com/s/aooxt5czm15tzfa/Teams_Table?dl=1") # Read in of final team table so no need to use long loop. 
 
 team_full <-  Team_table_csv
@@ -170,31 +166,31 @@ summary(rank_table)
 net_score <- rank_test %>%
   filter(SystemName == "NET") %>%
   select(c(TeamID_Year, RankingDayNum, OrdinalRank)) %>%
-  as.data.frame()
+  as.data.frame() # Creating data fram of ordinal ranks from NET
 
 teams_net <- as.data.frame(unique(net_score$TeamID_Year))
-colnames(teams_net)[1] <- "TeamID_Year"
+colnames(teams_net)[1] <- "TeamID_Year" # Creating unique names
 
-cc1 <-  as.data.frame(matrix(NA, nrow = nrow(teams_net), ncol = 2))
+cc1 <-  as.data.frame(matrix(NA, nrow = nrow(teams_net), ncol = 2)) # data frame for NET rank loop
                       
 for (i in 1:nrow(teams_net)){
   temp <- net_score[net_score$TeamID_Year == teams_net$TeamID_Year[i], ]
   cc1[i, 1] <- teams_net$TeamID_Year[i]
   cc1[i, 2] <- max(temp$RankingDayNum)
   
-}
+} # loop to confirm most recent rank
 
-cc2 <- merge(cc1, net_score, by.x = c("V1", "V2"), by.y = c("TeamID_Year", "RankingDayNum"), all.x = TRUE)
+cc2 <- merge(cc1, net_score, by.x = c("V1", "V2"), by.y = c("TeamID_Year", "RankingDayNum"), all.x = TRUE) # Merging data frame to have the final NET rank
 
-cc2 <- cc2[,c(1,3)]
-
-
-Team_Table_NET <- merge(Team_table_csv, cc2, by.x = "TeamID_Year", by.y = "V1", all.x = TRUE)
+cc2 <- cc2[,c(1,3)] # removing extra columns
 
 
-Team_Table_NET <- Team_Table_NET[,-c(2, 24,25, 26)]
+Team_Table_NET <- merge(Team_table_csv, cc2, by.x = "TeamID_Year", by.y = "V1", all.x = TRUE) # merginig to create table with final NET score
 
-colnames(Team_Table_NET)[23] <- "Final_NET_Rank"
+
+Team_Table_NET <- Team_Table_NET[,-c(2, 24,25, 26)] # Removing uneeded columns
+
+colnames(Team_Table_NET)[23] <- "Final_NET_Rank" # rename new column
 ```
 
 ```{r :: Creating Final_AP}
@@ -203,33 +199,33 @@ colnames(Team_Table_NET)[23] <- "Final_NET_Rank"
 ap_score <- rank_test %>%
   filter(SystemName == "AP") %>%
   select(c(TeamID_Year, RankingDayNum, OrdinalRank)) %>%
-  as.data.frame()
+  as.data.frame() # Creating ap_score data frame
 
 teams_ap <-  as.data.frame(unique(ap_score$TeamID_Year))
-colnames(teams_ap)[1] <- "TeamID_Year"
+colnames(teams_ap)[1] <- "TeamID_Year" #creating ap_scor team names
 
 
 #sum(is.na(ap_score$OrdinalRank))
 
 #length(unique(ap_score$TeamID_Year))
 
-dd1 <-  as.data.frame(matrix(NA, nrow = nrow(teams_ap), ncol = 2))
+dd1 <-  as.data.frame(matrix(NA, nrow = nrow(teams_ap), ncol = 2)) # empty data frame for loop
                       
 for (i in 1:nrow(teams_ap)){
   temp <- ap_score[ap_score$TeamID_Year == teams_ap$TeamID_Year[i], ]
   dd1[i, 1] <- teams_ap$TeamID_Year[i]
   dd1[i, 2] <- max(temp$RankingDayNum)
   
-}
+} # loop to create final AP score day number
 
-dd2 <- merge(dd1, ap_score, by.x = c("V1", "V2"), by.y = c("TeamID_Year", "RankingDayNum"), all.x = TRUE)
+dd2 <- merge(dd1, ap_score, by.x = c("V1", "V2"), by.y = c("TeamID_Year", "RankingDayNum"), all.x = TRUE) # Merging to use day number and team ID to have AP score
 
-dd2 <- dd2[,c(1,3)]
+dd2 <- dd2[,c(1,3)] # Removing columns
 
 
-Team_Table_NET_AP <- merge(Team_Table_NET, dd2, by.x = "TeamID_Year", by.y = "V1", all.x = TRUE)
+Team_Table_NET_AP <- merge(Team_Table_NET, dd2, by.x = "TeamID_Year", by.y = "V1", all.x = TRUE) # Merginig fro final data frame
 
-colnames(Team_Table_NET_AP)[24] <- "Final_AP_Rank"
+colnames(Team_Table_NET_AP)[24] <- "Final_AP_Rank" # Renaming final data frame
 
 ```
 
