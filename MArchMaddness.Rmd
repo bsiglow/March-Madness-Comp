@@ -308,6 +308,16 @@ game_level_all$Loss <- as.numeric(game_level_all$Score_diff < 0)
 game_level_all$Tie <- as.numeric(game_level_all$Score_diff == 0)
 
 sum(game_level_all$Tie)
+
+
 ```
+
+```{r}
+save(Team_Table_NET_AP, file = "Team_Season_Data") # Saving the final team Season Data
+save(teams, file = "Unique_Team_Names") # Saving the unique teams season ids
+save(game_level_all, file = "OG_game_lvl_data") #  Saving all game level data nor using XGboost ready frame
+save(game_level_games, file = "Unique_game_lvl_names") # Unique game names
+```
+
 
 # Final game level stats comparison loop for r team and o team then cbind them. 
