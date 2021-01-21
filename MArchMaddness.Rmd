@@ -32,7 +32,8 @@ sum(is.na(teams$`unique(c(teams_pros$LTIDSeason, teams_pros$WTIDSeason))`))
 colnames(teams)[1] <-  "TeamID"
 ```
 
-```{r :: Creating winning team data frame}
+```{r :: Creating winning team data frame} 
+# need to check on the Wloc 
 #teams_prossmall <-  teams_pros[1:10,] # small data frame to confirm cleaning
 #a_teams_prossmall <-  teams_prossmall[,-36] # Removing Losing team info (Smallframe)
 a_teams_pros <-  teams_pros[,-36] # Removing Losing team info 
@@ -232,7 +233,77 @@ colnames(Team_Table_NET_AP)[24] <- "Final_AP_Rank" # Renaming final data frame
 # Next Steps 
 ## Need to replace NAS
 ### For AP (occured since 2003) replace NAs with 26 + 1 or Max(ap_score$OrdinalScore) + 1
-### For NET the scores are not in the data until 2019 we need to determuine best process to deal with this posssibly split the data
-##Create game level data 
+### For NET the scores are not in the data until 2019 we need to determine best process to deal with this posssibly split the data
+##Create game level data
+```{r :: game_level processing}
+game_level <- OG_RegSeasonStat
+
+
+#summary(game_level)
+
+
+game_level$GameIDW <-  paste(game_level$Season, game_level$WTeamID, game_level$DayNum) #creating winning team game id
+game_level$WTeamID <- paste(game_level$Season, game_level$WTeamID) # Replacing winning team ID with team level id from previous processing
+game_level$GameIDL <-  paste(game_level$Season, game_level$LTeamID, game_level$DayNum) # creating losing team id from previous processing 
+game_level$LTeamID <- paste(game_level$Season, game_level$LTeamID) # Replacing losing team ID with team level id from previous processing
+
+```
+
+```{r :: Unique game IDs list }
+game_level_games <-  as.data.frame(unique(c(game_level$GameIDW, game_level$GameIDL)))
+
+colnames(game_level_games)[1] <- "GameID"
+```
+
+```{r :: Winning team game log}
+game_level_pros <-  game_level
+
+
+a_game_pros <-  game_level_pros[,-36] # a <- winning team game data
+a_game_pros$Score_diff <-  a_game_pros$WScore - a_game_pros$LScore # Creating score diff, will need to remove in the xg model
+r_game_w_clean <- function(x){colnames(x) <- gsub("W","R", colnames(x)); x} # Row team game stats
+o_game_w_clean <- function(x){colnames(x) <- gsub("L","O", colnames(x)); x} # Opponent game stats
+
+a_game_pros <- r_game_w_clean(a_game_pros)
+a_game_pros <- o_game_w_clean(a_game_pros)
+
+colnames(a_game_pros)[7] <- "WLoc"
+```
+
+```{r :: Losing team game log}
+
+b_game_pros <-  game_level_pros[,-35] # a <- losing team game data
+b_game_pros$Score_diff <-  b_game_pros$LScore - b_game_pros$WScore # Creating score diff, will need to remove in the xg model
+r_game_l_clean <- function(x){colnames(x) <- gsub("L","R", colnames(x)); x} # Row team game stats
+o_game_l_clean <- function(x){colnames(x) <- gsub("W","O", colnames(x)); x} # Opponent game stats
+
+b_game_pros <- r_game_l_clean(b_game_pros)
+b_game_pros <- o_game_l_clean(b_game_pros)
+
+colnames(b_game_pros)[7] <- "WLoc"
+```
+
+```{r :: reorder all columns}
+# Reorder the columns 
+colnames(a_game_pros)
+colnames(b_game_pros)
+
+col_order <-  c("GameIDR", "RTeamID", "RScore", "RFGM", "RFGA", "RFGM3", "RFGA3", "RFTM", "RFTA", "ROR", "RDR", "RAst", "RTO", "RStl", "RBlk", "RPF","OTeamID","OScore", "OFGM", "OFGA", "OFGM3", "OFGA3", "OFTM", "OFTA", "OOR", "ODR", "OAst", "OTO", "OStl", "OBlk", "OPF", "Season", "DayNum","WLoc","NumOT", "Score_diff")
+
+a_game_pros <- a_game_pros[,col_order]
+b_game_pros <- b_game_pros[,col_order]
+```
+
+
+```{r :: Combining the game level}
+
+game_level_all <-  rbind(a_game_pros, b_game_pros)
+
+game_level_all$Win <- as.numeric(game_level_all$Score_diff > 0)
+game_level_all$Loss <- as.numeric(game_level_all$Score_diff < 0)
+game_level_all$Tie <- as.numeric(game_level_all$Score_diff == 0)
+
+sum(game_level_all$Tie)
+```
 
 
