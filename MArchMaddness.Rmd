@@ -159,7 +159,6 @@ Team_table_csv <-  read.csv("https://www.dropbox.com/s/aooxt5czm15tzfa/Teams_Tab
 
 team_full <-  Team_table_csv
 summary(Team_table_csv) # Created 5807 NA values through the loop. This will need to be reviewed. 
-summary(rank_table)
 ```
 
 ```{r :: creating the NET value to be merged in}
@@ -187,12 +186,12 @@ for (i in 1:nrow(teams_net)){
 #cc2 <- cc2[,c(1,3)] # removing extra columns
 
 
-#Team_Table_NET <- merge(Team_table_csv, cc2, by.x = "TeamID_Year", by.y = "V1", all.x = TRUE) # merginig to create table with final NET score
+Team_Table_NET <- merge(Team_table_csv, cc1, by.x = "TeamID_Year", by.y = "V1", all.x = TRUE) # merginig to create table with final NET score
 
 
-#Team_Table_NET <- Team_Table_NET[,-c(2, 24,25, 26)] # Removing uneeded columns
+Team_Table_NET <- Team_Table_NET[,-c(2,24, 25,26, 27)] # Removing uneeded columns
 
-#colnames(Team_Table_NET)[23] <- "Final_NET_Rank" # rename new column
+colnames(Team_Table_NET)[23] <- "Final_NET_Rank" # rename new column
 ```
 
 ```{r :: Creating Final_AP}
@@ -212,24 +211,27 @@ colnames(teams_ap)[1] <- "TeamID_Year" #creating ap_scor team names
 
 #length(unique(ap_score$TeamID_Year))
 
-dd1 <-  as.data.frame(matrix(NA, nrow = nrow(teams_ap), ncol = 2)) # empty data frame for loop
+dd1 <-  as.data.frame(matrix(NA, nrow = nrow(teams_ap), ncol = 3)) # empty data frame for loop
                       
 for (i in 1:nrow(teams_ap)){
   temp <- ap_score[ap_score$TeamID_Year == teams_ap$TeamID_Year[i], ]
   dd1[i, 1] <- teams_ap$TeamID_Year[i]
   dd1[i, 2] <- max(temp$RankingDayNum)
-  
+  dd1[i, 3] <- temp$OrdinalRank[nrow(temp)]
+  dd1[i, 4] <- max(temp$OrdinalRank)
 } # loop to create final AP score day number
 
-dd2 <- merge(dd1, ap_score, by.x = c("V1", "V2"), by.y = c("TeamID_Year", "RankingDayNum"), all.x = TRUE) # Merging to use day number and team ID to have AP score
+#dd2 <- merge(dd1, ap_score, by.x = c("V1", "V2"), by.y = c("TeamID_Year", "RankingDayNum"), all.x = TRUE) # Merging to use day number and team ID to have AP score
 
-dd2 <- dd2[,c(1,3)] # Removing columns
+#dd2 <- dd2[,c(1,3)] # Removing columns
 
 
-Team_Table_NET_AP <- merge(Team_Table_NET, dd2, by.x = "TeamID_Year", by.y = "V1", all.x = TRUE) # Merginig fro final data frame
+Team_Table_NET_AP <- merge(Team_Table_NET, dd1, by.x = "TeamID_Year", by.y = "V1", all.x = TRUE) # Merginig fro final data frame
+
+Team_Table_NET_AP <- Team_Table_NET_AP[,-c(24)]
 
 colnames(Team_Table_NET_AP)[24] <- "Final_AP_Rank" # Renaming final data frame
-
+colnames(Team_Table_NET_AP)[25] <- "Worst_AP_Rank"
 ```
 
 # Next Steps 
@@ -313,11 +315,141 @@ sum(game_level_all$Tie)
 ```
 
 ```{r}
-save(Team_Table_NET_AP, file = "Team_Season_Data") # Saving the final team Season Data
-save(teams, file = "Unique_Team_Names") # Saving the unique teams season ids
-save(game_level_all, file = "OG_game_lvl_data") #  Saving all game level data nor using XGboost ready frame
-save(game_level_games, file = "Unique_game_lvl_names") # Unique game names
+#save(Team_Table_NET_AP, file = "Team_Season_Data") # Saving the final team Season Data
+#save(teams, file = "Unique_Team_Names") # Saving the unique teams season ids
+#save(game_level_all, file = "OG_game_lvl_data") #  Saving all game level data nor using XGboost ready frame
+#save(game_level_games, file = "Unique_game_lvl_names") # Unique game names
+```
+
+```{r :: Load in rda files from drop box}
+
+load(url("https://www.dropbox.com/s/ngm0dijb1q7im89/OG_game_lvl_data?dl=1"))
+load(url("https://www.dropbox.com/s/09gkehk7h2vp02w/Team_Season_Data?dl=1"))
+load(url("https://www.dropbox.com/s/2bpjotutyxaszc1/Unique_game_lvl_names?dl=1"))
+load(url("https://www.dropbox.com/s/fh65tumja7bdt0e/Unique_Team_Names?dl=1"))
 ```
 
 
-# Final game level stats comparison loop for r team and o team then cbind them. 
+```{r :: Creating XGboost data frame for first run }
+
+team_row <- as.data.frame(game_level_all[,1:2])
+
+team_op <- as.data.frame(game_level_all[,c("GameIDR","OTeamID")])
+
+```
+
+```{r}
+res <- as.data.frame(NA, nrow = nrow(team_row), ncol = ncol(30))
+
+pb <- txtProgressBar(min = 0, max = nrow(team_row), style = 3)
+
+for (i in 1:nrow(team_row)) {
+    Sys.sleep(0.01)
+   # I need to see progress
+   setTxtProgressBar(pb, i)
+  temp <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == team_row$RTeamID[i],]
+  res[i,1] <- team_row$GameIDR[i]
+  res[i,2] <- team_row$RTeamID[i]
+  res[i,3] <- temp$FG_Prec[nrow(temp)]
+  res[i,4] <- temp$Avg_Score[nrow(temp)]
+  res[i,5] <- temp$AVG_OT[nrow(temp)]
+  res[i,6] <- temp$Avg_FGA[nrow(temp)]
+  res[i,7] <- temp$FG3_Prec[nrow(temp)]
+  res[i,8] <- temp$Avg_FGA3[nrow(temp)]
+  res[i,9] <- temp$FT_Prec[nrow(temp)]
+  res[i,10] <- temp$AVG_FTA[nrow(temp)]
+  res[i,11] <- temp$AVG_OR[nrow(temp)]
+  res[i,12] <- temp$AVG_DR[nrow(temp)]
+  res[i,13] <- temp$AVG_AST[nrow(temp)]
+  res[i,14] <- temp$ACG_TO[nrow(temp)]
+  res[i,15] <- temp$AvG_Stl[nrow(temp)]
+  res[i,16] <- temp$AVG_Blk[nrow(temp)]
+  res[i,17] <- temp$AVG_PF[nrow(temp)]
+  res[i,18] <- temp$AVG_Scor_Diff[nrow(temp)]
+  res[i,19] <- temp$X2pt_3pt_ratio[nrow(temp)]
+  res[i,20] <- temp$Avg_Rank[nrow(temp)]
+  res[i,21] <- temp$Best_Rank[nrow(temp)]
+  res[i,22] <- temp$Final_NET_Rank[nrow(temp)]
+  res[i,23] <- temp$Final_AP_Rank[nrow(temp)]
+  res[i,24] <- temp$Worst_AP_Rank[nrow(temp)]
+}
+close(pb)
+
+team_row_all <- res
+
+colnames(Team_Table_NET_AP)
+
+names(team_row_all) <- c("GameIDR", "RTeamID","RFG_Prec","RAvg_Score","RAVG_OT","RAvg_FGA",  "RFG3_Prec","RAvg_FGA3","RFT_Prec","RAVG_FTA","RAVG_OR","RAVG_DR","RAVG_AST","RAvG_TO","RAvG_Stl","RAVG_Blk","RAVG_PF","RAVG_Scor_Diff","RX2pt_3pt_ratio","RAvg_Rank","RBest_Rank","RFinal_NET_Rank","RFinal_AP_Rank","RWorst_AP_Rank")
+```
+
+```{r}
+res <- as.data.frame(NA, nrow = nrow(team_op), ncol = ncol(30))
+
+pb <- txtProgressBar(min = 0, max = nrow(team_op), style = 3)
+
+for (i in 1:nrow(team_op)) {
+  Sys.sleep(0.01)
+   # I need to see progress
+   setTxtProgressBar(pb, i)
+  temp <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == team_op$OTeamID[i],]
+  res[i,1] <- team_op$GameIDR[i]
+  res[i,2] <- team_op$OTeamID[i]
+  res[i,3] <- temp$FG_Prec[nrow(temp)]
+  res[i,4] <- temp$Avg_Score[nrow(temp)]
+  res[i,5] <- temp$AVG_OT[nrow(temp)]
+  res[i,6] <- temp$Avg_FGA[nrow(temp)]
+  res[i,7] <- temp$FG3_Prec[nrow(temp)]
+  res[i,8] <- temp$Avg_FGA3[nrow(temp)]
+  res[i,9] <- temp$FT_Prec[nrow(temp)]
+  res[i,10] <- temp$AVG_FTA[nrow(temp)]
+  res[i,11] <- temp$AVG_OR[nrow(temp)]
+  res[i,12] <- temp$AVG_DR[nrow(temp)]
+  res[i,13] <- temp$AVG_AST[nrow(temp)]
+  res[i,14] <- temp$ACG_TO[nrow(temp)]
+  res[i,15] <- temp$AvG_Stl[nrow(temp)]
+  res[i,16] <- temp$AVG_Blk[nrow(temp)]
+  res[i,17] <- temp$AVG_PF[nrow(temp)]
+  res[i,18] <- temp$AVG_Scor_Diff[nrow(temp)]
+  res[i,19] <- temp$X2pt_3pt_ratio[nrow(temp)]
+  res[i,20] <- temp$Avg_Rank[nrow(temp)]
+  res[i,21] <- temp$Best_Rank[nrow(temp)]
+  res[i,22] <- temp$Final_NET_Rank[nrow(temp)]
+  res[i,23] <- temp$Final_AP_Rank[nrow(temp)]
+  res[i,24] <- temp$Worst_AP_Rank[nrow(temp)]
+}
+close(pb)
+
+team_opp_all <- res
+
+names(team_opp_all) <- c("GameIDR", "OTeamID","OFG_Prec","OAvg_Score","OAVG_OT","OAvg_FGA",  "OFG3_Prec","OAvg_FGA3","OFT_Prec","OAVG_FTA","OAVG_OR","OAVG_DR","RAVG_AST","OAvG_TO","OAvG_Stl","OAVG_Blk","OAVG_PF","OAVG_Scor_Diff","OX2pt_3pt_ratio","OAvg_Rank","OBest_Rank","OFinal_NET_Rank","OFinal_AP_Rank","OWorst_AP_Rank")
+
+```
+
+```{r}
+Game_full <-  cbind(team_row_all,team_opp_all)
+
+colnames(Game_full)[25] <- "GameIDR2" 
+
+sum(Game_full$GameIDR == Game_full$GameIDR2)
+
+Game_full <-  cbind(Game_full, game_level_all[,c(37,38)])
+
+save(Game_full, file = "Game_lvl_svg_stats")
+
+```
+
+
+# Final game level stats for initital XGBoost
+```{r}
+load(url("https://www.dropbox.com/s/8zqshqwnvnzqkb9/Game_lvl_svg_stats?dl=1"))
+```
+
+
+
+
+
+
+
+
+
+
