@@ -442,11 +442,30 @@ save(Game_full, file = "Game_lvl_svg_stats")
 # Final game level stats for initital XGBoost
 ```{r}
 load(url("https://www.dropbox.com/s/8zqshqwnvnzqkb9/Game_lvl_svg_stats?dl=1"))
+
+
+
+Game_full$RWorst_AP_Rank[is.na(Game_full$RWorst_AP_Rank)] <- max(Game_full$RWorst_AP_Rank, na.rm = TRUE) + 1
+
+Game_full$OWorst_AP_Rank[is.na(Game_full$OWorst_AP_Rank)] <- max(Game_full$OWorst_AP_Rank, na.rm = TRUE) + 1
+
+
+Game_full$Rank_Diff_AVG <- Game_full$RAvg_Rank - Game_full$OAvg_Rank
+Game_full$Rank_Diff_Best_Rank <- Game_full$RBest_Rank - Game_full$OBest_Rank
+Game_full$Rank_Diff_Final_NET_Rank <- Game_full$RFinal_NET_Rank - Game_full$OFinal_NET_Rank
+Game_full$Rank_Diff_Final_AP_Rank <- Game_full$RFinal_AP_Rank - Game_full$OFinal_AP_Rank
+Game_full$Rank_Diff_Worst_AP_Rank <- Game_full$RWorst_AP_Rank - Game_full$OWorst_AP_Rank
+
+Game_full$Rank
+
+48
+
+Game_full <- Game_full[,c(1:47,49:53,48)]
+
+# Game_full is now pre processed for XGBoost
 ```
 
-
-
-
+## Possible codes
 
 
 
