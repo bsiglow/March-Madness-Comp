@@ -7,7 +7,25 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(dplyr)
+
+library(devtools)
+library(xgboostExplainer)
+library(tidyverse)
+library(ggdark)
+library(rattle)	
+library(RColorBrewer)
+library(randomForest)
+library(caTools)
+library(caret)
+library(rpart)
+library(splitstackshape)
+library(xgboost)
+library(Metrics)
+library(pROC)
+library(SHAPforxgboost)
+library(xgboostExplainer)
+library(OptimalCutpoints)
+
 ```
 
 ```{r :: Read in original Data}
@@ -465,10 +483,129 @@ Game_full <- Game_full[,c(1:47,49:53,48)]
 # Game_full is now pre processed for XGBoost
 ```
 
+
+
+# Begininig Strat spilt for the 
 ## Possible codes
+```{r :: Restrat and make sets for XGBoost}
+Game_fullXG <- Game_full
+
+set.seed(1984)
+
+split <-  stratified(Game_fullXG, c('Win'), .80, bothSets = TRUE)
+train_strat <- split[[1]]
+test_strat <- split[[2]]
+
+```
 
 
+```{r :: Creating XGMatrix }
+Gtrain <- xgb.DMatrix(data = as.matrix(train_strat[,c(3:24, 26:52)]), label = as.numeric(train_strat$Win) - 1)
+# Create test matrix
+Gtest <- xgb.DMatrix(data = as.matrix(test_strat[, c(3:24, 26:52)]), label = as.numeric(test_strat$Win) - 1)
+
+```
+
+```{r :: Light XG Model}
+set.seed(1984)
+Gamebeast <- xgboost(data = Gtrain, 
+               eta = .3,
+               nrounds = 1000, 
+               nthread = 4, 
+               verbose = 1, 
+               print_every_n = 20,
+               
+               objective = "binary:logistic", # Set objective
+               eval_metric = "auc",
+               eval_metric = "error")
+
+```
+
+```{r :: Light XG Results}
+boost_preds <- predict(Gamebeast, Gtrain) # Create predictions for xgboost model
+# Join predictions and actual
+pred_dat <- cbind.data.frame(boost_preds , train_strat$Win)
+names(pred_dat) <- c("predictions", "response")
 
 
+boost_preds_1 <- predict(Gamebeast, Gtest) # Create predictions for xgboost model
+
+## pred_dat <- cbind.data.frame(boost_preds_1 , test_data$class)#obselite now.
+# Convert predictions to classes, using optimal cut-off
+boost_pred_class <- rep(0, length(boost_preds_1))
+boost_pred_class[boost_preds_1 >= .5] <- 1
+
+
+SmallXGBoost <- table(boost_pred_class, test_strat$Win) # Create table
+confusionMatrix(SmallXGBoost, positive = "1")
+
+
+# .6897 accuracy
+```
+
+
+```{r :: XGBoost Predictions Too large for this}
+# boost_preds <- predict(Gamebeast, Gtrain) # Create predictions for xgboost model
+# # Join predictions and actual
+# pred_dat <- cbind.data.frame(boost_preds , train_strat$Win)
+# names(pred_dat) <- c("predictions", "response")
+# oc<- optimal.cutpoints(X = "predictions",
+#                        status = "response",
+#                        tag.healthy = 0,
+#                        data = pred_dat,
+#                        methods = "MaxEfficiency")
+# 
+# boost_preds_1 <- predict(Gamebeast, Gtest) # Create predictions for xgboost model
+# 
+# ## pred_dat <- cbind.data.frame(boost_preds_1 , test_data$class)#obselite now.
+# # Convert predictions to classes, using optimal cut-off
+# boost_pred_class <- rep(0, length(boost_preds_1))
+# boost_pred_class[boost_preds_1 >= oc$MaxEfficiency$Global$optimal.cutoff$cutoff[1]] <- 1
+# 
+# 
+# t <- table(boost_pred_class, test_data$class) # Create table
+# confusionMatrix(t, positive = "1")
+
+```
+
+
+```{r :: Tuning max_depth and Min_child}
+
+# Be Careful - This can take a very long time to run
+max_depth_vals <- c(3, 5, 7, 10, 15) # Create vector of max depth values
+min_child_weight <- c(1,3,5,7, 10, 15) # Create vector of min child values
+
+# Expand grid of parameter values
+cv_params <- expand.grid(max_depth_vals, min_child_weight)
+names(cv_params) <- c("max_depth", "min_child_weight")
+# Create results vector
+auc_vec <- error_vec <- rep(NA, nrow(cv_params)) 
+# Loop through results
+for(i in 1:nrow(cv_params)){
+  set.seed(1984)
+  Gbst_tune <- xgb.cv(data = Gtrain, # Set training data
+              
+              nfold = 5, # Use 5 fold cross-validation
+               
+              eta = 0.1, # Set learning rate
+              max.depth = cv_params$max_depth[i], # Set max depth
+              min_child_weight = cv_params$min_child_weight[i], # Set minimum number of samples in node to split
+             
+               
+              nrounds = 100, # Set number of rounds
+              early_stopping_rounds = 20, # Set number of rounds to stop at if there is no improvement
+               
+              verbose = 1, # 1 - Prints out fit
+              nthread = 6, # Set number of parallel threads
+              print_every_n = 20, # Prints out result every 20th iteration
+               
+              objective = "binary:logistic", # Set objective
+              eval_metric = "auc", # Set evaluation metric to use
+              eval_metric = "error") # Set evaluation metric to use
+  auc_vec[i] <- Gbst_tune$evaluation_log$test_auc_mean[Gbst_tune$best_ntreelimit]
+  error_vec[i] <- Gbst_tune$evaluation_log$test_error_mean[Gbst_tune$best_ntreelimit]
+  
+}
+```
 
 
