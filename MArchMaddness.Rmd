@@ -490,7 +490,16 @@ Game_full <- Game_full[,c(1:47,49:53,48)]
 ```{r :: Restrat and make sets for XGBoost}
 Game_fullXG <- Game_full
 
+Game_fullXG$RFinal_NET_Rank[is.na(Game_fullXG$RFinal_NET_Rank)] <- max(Game_fullXG$RFinal_NET_Rank, na.rm = TRUE) + 1
+
+Game_fullXG$RFinal_AP_Rank[is.na(Game_fullXG$RFinal_AP_Rank)] <-  max(Game_fullXG$RFinal_AP_Rank, na.rm = TRUE) + 1
+
+Game_fullXG$OFinal_NET_Rank[is.na(Game_fullXG$OFinal_NET_Rank)] <- max(Game_fullXG$OFinal_NET_Rank, na.rm = TRUE) + 1
+
+Game_fullXG$OFinal_AP_Rank[is.na(Game_fullXG$OFinal_AP_Rank)] <-  max(Game_fullXG$OFinal_AP_Rank, na.rm = TRUE) + 1
 set.seed(1984)
+
+Game_fullXG$Rank_Diff_Final_NET_Rank[is.na(Game_fullXG$Rank_Diff_Final_NET_Rank)] <-  0
 
 split <-  stratified(Game_fullXG, c('Win'), .80, bothSets = TRUE)
 train_strat <- split[[1]]
@@ -500,9 +509,9 @@ test_strat <- split[[2]]
 
 
 ```{r :: Creating XGMatrix }
-Gtrain <- xgb.DMatrix(data = as.matrix(train_strat[,c(3:24, 26:52)]), label = as.numeric(train_strat$Win) - 1)
+Gtrain <- xgb.DMatrix(data = as.matrix(train_strat[,c(3:24, 27:47,50:53)]), label = as.numeric(train_strat$Win))
 # Create test matrix
-Gtest <- xgb.DMatrix(data = as.matrix(test_strat[, c(3:24, 26:52)]), label = as.numeric(test_strat$Win) - 1)
+Gtest <- xgb.DMatrix(data = as.matrix(test_strat[, c(3:24, 27:47, 50:53)]), label = as.numeric(test_strat$Win))
 
 ```
 
@@ -649,4 +658,96 @@ res_db$max_depth[res_db$error == .2454608]
 res_db$min_child_weight[res_db$error == .2454608]
 ```
 
+```{r}
+
+## Go trhouggh and create all 32 rank for W x y z
+Tourney <-  data.frame(Team = rep(NA, 64), 
+                       Seed = c("W01", "W016", "W02", "W15", "W03","W14", "W04","W13", "W05","W12","W06", "W11", "W07","W10", "W08","W11","X01", "X16", "X02", "X15", "X03","X14", "X04","X13", "X05","X12","X06", "X11", "X07","X10", "X08","X09","Y01", "Y16", "Y02", "Y15", "Y03","Y14", "Y04","Y13", "Y05","Y12","Y06", "Y11", "Y07","Y10", "Y08","Y09","Z01", "Z16", "Z02", "Z15", "Z03","Z14", "Z04","Z13", "Z05","Z12","Z06", "Z07", "Z11","Z08", "Z09","Z10" ) # Work from outsides of range building into the median to create WO1 vs. WO16 and so on reference the march madness brcket. 
+                       ,
+                       Game = c(1,1, 2,2, 3,3,4, 4,5, 5,6, 6,7, 7, 8, 8, 9,9,10,10,11,11,12,12,13,13,14,14,15,15,16,16,17, 17, 18,18,19,19,20,20,21,21,22,22,23,23,24,24,25,25,26,26,27,28,28,29,29,30,30,31,31,32,32)
+                       Game2 = c(1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7,8,8,8,8,9,9,9,9,10,10,10,10,11,11,11,11,12,12,12,12,13,13,13,13,14,14,14,14,15,15,15,15,16,16,16,16), # Up to 16
+                       Game3 = c(rep(1,8),rep(2,8), rep(3,8), rep(4,8),rep(5,8),rep(6,8),rep(7,8),rep(8,8)), # Start with 8 1s up until 8
+                       Gane4 = c(rep(1,16),rep(2,16), rep(3,16), rep(4,16)), # 16 1s up until 4
+                       Game5 = c(rep(1,32),rep(2,32)), # 32 1s up until 2
+                       Game6 = c(rep(1,64)) # 64 1s use rep to create 
+                       )
+```
+
+```{r}
+Tourney_seed <-  read.csv("https://www.dropbox.com/s/xngfef3odmidqy8/MNCAATourneySeeds.csv?dl=1")
+
+Tourney_seed$TeamID_Year <-  paste(Tourney_seed$Season, Tourney_seed$TeamID)
+
+Tourney_seed <- Tourney_seed[,-3]
+
+Tourney_seed1 <-  merge(Tourney_seed, Tourney, by.x = "Seed", by.y = "Seed", all.y = TRUE)
+
+Tourney_seed1 <-  Tourney_seed1[,-4]
+```
+
+```{r}
+colnames(Tourney_seed1)[3] <- "RteamID"
+
+Test_t_funk <-  Tourney
+
+vec <-  (1:64 * 65)
+Test_t_funk$Team <-  vec
+
+length(unique(Test_t_funk$Team))
+```
+
+```{r}
+
+```
+
+
+
+
+
+```{r}
+
+res <- as.data.frame(NA, nrow = nrow(Tourney_seed1), ncol = ncol(30))
+
+pb <- txtProgressBar(min = 0, max = nrow(team_op), style = 3)
+
+for (i in 1:nrow(Tourney_seed1)) {
+  Sys.sleep(0.01)
+   # I need to see progress
+   setTxtProgressBar(pb, i)
+  temp <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == team_op$OTeamID[i],]
+  res[i,1] <- team_op$GameIDR[i]
+
+}
+close(pb)
+
+Tor_seed <- res
+
+```
+
+
+```{r}
+round2 <-  rep(NA, 64)
+
+
+for (i in 1:32){
+  teams <-  Tourney$Team[Tourney$Game == i]
+  stats1 <-  Team_Table_NET_AP[ == Team_Table_NET_AP$TeamID_Year[i]]
+  stats2 <-  Team_O
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  # recreat rank diffs in a stats 1 - stats 2
+  pred <-  predict(Gamebeast, temp_data)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round2[Tourney$Team == teams[2]] <-  Tourney$Game2[Tourney$Team == teams[2]] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }
+  else{
+    round2[Tourney$Team == teams[1]]
+  }
+}
+
+
+
+```
 
