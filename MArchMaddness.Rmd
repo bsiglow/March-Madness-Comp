@@ -673,6 +673,36 @@ Tourney <-  data.frame(Team = rep(NA, 64),
                        )
 ```
 
+
+
+```{r}
+colnames(Tourney_seed1)[3] <- "RteamID"
+
+Test_t_funk <-  Tourney
+
+vec <-  (1:64 * 65)
+Test_t_funk$Team <-  vec
+
+length(unique(Test_t_funk$Team))
+```
+
+
+```{r}
+
+## Go trhouggh and create all 32 rank for W x y z
+Tourney <-  data.frame(Team = rep(NA, 64), 
+                       Seed = c("W01", "W16", "W02", "W15", "W03","W14", "W04","W13", "W05","W12","W06", "W11", "W07","W10", "W08","W09","X01", "X16", "X02", "X15", "X03","X14", "X04","X13", "X05","X12","X06", "X11", "X07","X10", "X08","X09","Y01", "Y16", "Y02", "Y15", "Y03","Y14", "Y04","Y13", "Y05","Y12","Y06", "Y11", "Y07","Y10", "Y08","Y09","Z01", "Z16", "Z02", "Z15", "Z03","Z14", "Z04","Z13", "Z05","Z12","Z06", "Z11", "Z07","Z10", "Z08","Z09" ), # Work from outsides of range building into the median to create WO1 vs. WO16 and so on reference the march madness brcket. 
+                       
+                       Game = c(1,1, 2,2, 3,3,4, 4,5, 5,6, 6,7, 7, 8, 8, 9,9,10,10,11,11,12,12,13,13,14,14,15,15,16,16,17, 17, 18,18,19,19,20,20,21,21,22,22,23,23,24,24,25,25,26,26,27,27,28,28,29,29,30,30,31,31,32,32),
+                       
+                       Game2 = c(1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7,8,8,8,8,9,9,9,9,10,10,10,10,11,11,11,11,12,12,12,12,13,13,13,13,14,14,14,14,15,15,15,15,16,16,16,16), # Up to 16
+                       Game3 = c(rep(1,8),rep(2,8), rep(3,8), rep(4,8),rep(5,8),rep(6,8),rep(7,8),rep(8,8)), # Start with 8 1s up until 8
+                       Gane4 = c(rep(1,16),rep(2,16), rep(3,16), rep(4,16)), # 16 1s up until 4
+                       Game5 = c(rep(1,32),rep(2,32)), # 32 1s up until 2
+                       Game6 = c(rep(1,64)) # 64 1s use rep to create 
+                       )
+```
+
 ```{r}
 Tourney_seed <-  read.csv("https://www.dropbox.com/s/xngfef3odmidqy8/MNCAATourneySeeds.csv?dl=1")
 
@@ -686,22 +716,30 @@ Tourney_seed1 <-  Tourney_seed1[,-4]
 ```
 
 ```{r}
-colnames(Tourney_seed1)[3] <- "RteamID"
+round2 <-  rep(NA, 64)
 
-Test_t_funk <-  Tourney
 
-vec <-  (1:64 * 65)
-Test_t_funk$Team <-  vec
+for (i in 1:32){
+  teams <-  Tourney_seed1$Team[Tourney$Game == i]
+  stats1 <-  Team_Table_NET_AP[Tourney_seed1$TeamID_Year == Team_Table_NET_AP$TeamID_Year[i]]
+  stats2 <-  Team_Table_NET_AP[stats2 == Team_Table_NET_AP$] # How do yu determine the opponent ?
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  # recreat rank diffs in a stats 1 - stats 2
+  pred <-  predict(Gamebeast, temp_data)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round2[Tourney$Team == teams[2]] <-  Tourney$Game2[Tourney$Team == teams[2]] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }
+  else{
+    round2[Tourney$Team == teams[1]]
+  }
+}
 
-length(unique(Test_t_funk$Team))
+
+
 ```
-
-```{r}
-
-```
-
-
-
 
 
 ```{r}
@@ -723,31 +761,3 @@ close(pb)
 Tor_seed <- res
 
 ```
-
-
-```{r}
-round2 <-  rep(NA, 64)
-
-
-for (i in 1:32){
-  teams <-  Tourney$Team[Tourney$Game == i]
-  stats1 <-  Team_Table_NET_AP[ == Team_Table_NET_AP$TeamID_Year[i]]
-  stats2 <-  Team_O
-  temp_data <-  cbind.data.frame(stats1, stats2)
-  # recreat rank diffs in a stats 1 - stats 2
-  pred <-  predict(Gamebeast, temp_data)
-  sim <- runif(1, min = 0, max = 1)
-  if (pred < sim){
-    round2[Tourney$Team == teams[2]] <-  Tourney$Game2[Tourney$Team == teams[2]] # assign round 2 game to team 2 if they were to win the game
-    
-    
-  }
-  else{
-    round2[Tourney$Team == teams[1]]
-  }
-}
-
-
-
-```
-
