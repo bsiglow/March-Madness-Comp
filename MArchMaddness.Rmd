@@ -120,7 +120,7 @@ names(res) <-  c("TeamID_Year", "FG_Prec", "Avg_Score","AVG_OT", "Avg_FGA", "FG3
 
 teams_all1 <-  res
 
-length(unique(teams_all$TeamID_Year)) # Spot Check
+length(unique(teams_all1$TeamID_Year)) # Spot Check
 ```
 
 ```{r :: Read in rank data for rank columns}
@@ -476,7 +476,6 @@ Game_full$Rank_Diff_Worst_AP_Rank <- Game_full$RWorst_AP_Rank - Game_full$OWorst
 
 Game_full$Rank
 
-48
 
 Game_full <- Game_full[,c(1:47,49:53,48)]
 
@@ -501,17 +500,18 @@ set.seed(1984)
 
 Game_fullXG$Rank_Diff_Final_NET_Rank[is.na(Game_fullXG$Rank_Diff_Final_NET_Rank)] <-  0
 
+names(Game_fullXG)[37] <-  "OAVG_AST" # This needs to be moved to preprocessing portion
+
 split <-  stratified(Game_fullXG, c('Win'), .80, bothSets = TRUE)
 train_strat <- split[[1]]
 test_strat <- split[[2]]
 
 ```
 
-
 ```{r :: Creating XGMatrix }
-Gtrain <- xgb.DMatrix(data = as.matrix(train_strat[,c(3:24, 27:47,50:53)]), label = as.numeric(train_strat$Win))
+Gtrain <- xgb.DMatrix(data = as.matrix(train_strat[,c(3:24, 27:47)]), label = as.numeric(train_strat$Win))
 # Create test matrix
-Gtest <- xgb.DMatrix(data = as.matrix(test_strat[, c(3:24, 27:47, 50:53)]), label = as.numeric(test_strat$Win))
+Gtest <- xgb.DMatrix(data = as.matrix(test_strat[, c(3:24, 27:47)]), label = as.numeric(test_strat$Win))
 
 ```
 
@@ -658,16 +658,16 @@ res_db$max_depth[res_db$error == .2454608]
 res_db$min_child_weight[res_db$error == .2454608]
 ```
 
-```{r}
+```{r ::Original Tourney make that has worked in the model}
 
 ## Go trhouggh and create all 32 rank for W x y z
 Tourney <-  data.frame(Team = rep(NA, 64), 
                        Seed = c("W01", "W016", "W02", "W15", "W03","W14", "W04","W13", "W05","W12","W06", "W11", "W07","W10", "W08","W11","X01", "X16", "X02", "X15", "X03","X14", "X04","X13", "X05","X12","X06", "X11", "X07","X10", "X08","X09","Y01", "Y16", "Y02", "Y15", "Y03","Y14", "Y04","Y13", "Y05","Y12","Y06", "Y11", "Y07","Y10", "Y08","Y09","Z01", "Z16", "Z02", "Z15", "Z03","Z14", "Z04","Z13", "Z05","Z12","Z06", "Z07", "Z11","Z08", "Z09","Z10" ) # Work from outsides of range building into the median to create WO1 vs. WO16 and so on reference the march madness brcket. 
                        ,
-                       Game = c(1,1, 2,2, 3,3,4, 4,5, 5,6, 6,7, 7, 8, 8, 9,9,10,10,11,11,12,12,13,13,14,14,15,15,16,16,17, 17, 18,18,19,19,20,20,21,21,22,22,23,23,24,24,25,25,26,26,27,28,28,29,29,30,30,31,31,32,32)
+                       Game = c(1,1, 2,2, 3,3,4, 4,5, 5,6, 6,7, 7, 8, 8, 9,9,10,10,11,11,12,12,13,13,14,14,15,15,16,16,17, 17, 18,18,19,19,20,20,21,21,22,22,23,23,24,24,25,25,26,26,27,28,28,29,29,30,30,31,31,32,32),
                        Game2 = c(1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7,8,8,8,8,9,9,9,9,10,10,10,10,11,11,11,11,12,12,12,12,13,13,13,13,14,14,14,14,15,15,15,15,16,16,16,16), # Up to 16
                        Game3 = c(rep(1,8),rep(2,8), rep(3,8), rep(4,8),rep(5,8),rep(6,8),rep(7,8),rep(8,8)), # Start with 8 1s up until 8
-                       Gane4 = c(rep(1,16),rep(2,16), rep(3,16), rep(4,16)), # 16 1s up until 4
+                       Game4 = c(rep(1,16),rep(2,16), rep(3,16), rep(4,16)), # 16 1s up until 4
                        Game5 = c(rep(1,32),rep(2,32)), # 32 1s up until 2
                        Game6 = c(rep(1,64)) # 64 1s use rep to create 
                        )
@@ -677,17 +677,10 @@ Tourney <-  data.frame(Team = rep(NA, 64),
 
 ```{r}
 colnames(Tourney_seed1)[3] <- "RteamID"
-
-Test_t_funk <-  Tourney
-
-vec <-  (1:64 * 65)
-Test_t_funk$Team <-  vec
-
-length(unique(Test_t_funk$Team))
 ```
 
 
-```{r}
+```{r :: Bens version of tourney data for the model }
 
 ## Go trhouggh and create all 32 rank for W x y z
 Tourney <-  data.frame(Team = rep(NA, 64), 
@@ -695,69 +688,302 @@ Tourney <-  data.frame(Team = rep(NA, 64),
                        
                        Game = c(1,1, 2,2, 3,3,4, 4,5, 5,6, 6,7, 7, 8, 8, 9,9,10,10,11,11,12,12,13,13,14,14,15,15,16,16,17, 17, 18,18,19,19,20,20,21,21,22,22,23,23,24,24,25,25,26,26,27,27,28,28,29,29,30,30,31,31,32,32),
                        
-                       Game2 = c(1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7,8,8,8,8,9,9,9,9,10,10,10,10,11,11,11,11,12,12,12,12,13,13,13,13,14,14,14,14,15,15,15,15,16,16,16,16), # Up to 16
-                       Game3 = c(rep(1,8),rep(2,8), rep(3,8), rep(4,8),rep(5,8),rep(6,8),rep(7,8),rep(8,8)), # Start with 8 1s up until 8
-                       Gane4 = c(rep(1,16),rep(2,16), rep(3,16), rep(4,16)), # 16 1s up until 4
-                       Game5 = c(rep(1,32),rep(2,32)), # 32 1s up until 2
-                       Game6 = c(rep(1,64)) # 64 1s use rep to create 
+                       Game2 = c(1,1,2,2,3,3,4,4,4,4,3,3,2,2,1,1,5,5,6,6,7,7,8,8,8,8,7,7,6,6,5,5,9,9,10,10,11,11,12,12,12,12,11,11,10,10,9,9,13,13,14,14,15,15,16,16,16,16,15,15,14,14,13,13), # Up to 16
+                       Game3 = c(1,1,2,2,2,2,1,1,1,1,2,2,2,2,1,1,3,3,4,4,4,4,3,3,3,3,4,4,4,4,3,3,5,5,6,6,6,6,5,5,5,5,6,6,6,6,5,5,7,7,8,8,8,8,7,7,7,7,8,8,8,8,7,7), # Start with 8 1s up until 8
+                       Game4 = c(rep(1,16), rep(2,16), rep(3,16), rep(4,16)), # 16 1s up until 4
+
+                       ### This needs reviewed, but I am making the assumption the bracked quadrants are labeled clock wise i.e. W = South, X = East, Y = West, Z = Midweat. This Means in Final 4 you have W vs. Z and X vs. Y.
+                       Game5 = c(rep(1,16),rep(2,16),rep(2,16),rep(1,16)), # final 4 two games 4 numbers
+                       Game6 = c(rep(1,64)) # championship 1 game 2 numbers 
                        )
 ```
 
-```{r}
+```{r :: Creating one year tournament 2017}
 Tourney_seed <-  read.csv("https://www.dropbox.com/s/xngfef3odmidqy8/MNCAATourneySeeds.csv?dl=1")
 
 Tourney_seed$TeamID_Year <-  paste(Tourney_seed$Season, Tourney_seed$TeamID)
 
-Tourney_seed <- Tourney_seed[,-3]
+Tourney_seed <- Tourney_seed[Tourney_seed$Season==2017,-3]
 
-Tourney_seed1 <-  merge(Tourney_seed, Tourney, by.x = "Seed", by.y = "Seed", all.y = TRUE)
+```
+
+```{r :: Creating the play in games}
+
+## Hard coded these values in for 2017 play in games will need to further code this in 
+W11a <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "W11a"],]
+
+names(W11a) <- paste("R", names(W11a), sep = "")
+  
+W11b <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "W11b"],]
+
+names(W11b) <- paste("O", names(W11b), sep = "")
+
+
+W11 <-  cbind(W11a, W11b)
+
+W11_dat <- xgb.DMatrix(data = as.matrix(W11[, names(test_strat)[c(3:24, 27:47)]]))
+W11_pred <-  predict(Gamebeast, W11_dat)
+W11_pred > .5
+#W11a
+
+# W16 prediction hard code
+
+W16a <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "W16a"],]
+
+names(W16a) <- paste("R", names(W16a), sep = "")
+  
+W16b <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "W16b"],]
+
+names(W16b) <- paste("O", names(W16b), sep = "")
+
+
+W16 <-  cbind(W16a, W16b)
+
+W16_dat <- xgb.DMatrix(data = as.matrix(W16[, names(test_strat)[c(3:24, 27:47)]]))
+W16_pred <-  predict(Gamebeast, W16_dat)
+W16_pred > .5
+# W16a is the winner
+
+
+# Y16 prediction
+
+Y16a <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "Y16a"],]
+
+names(Y16a) <- paste("R", names(Y16a), sep = "")
+  
+Y16b <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "Y16b"],]
+
+names(Y16b) <- paste("O", names(Y16b), sep = "")
+
+
+Y16 <-  cbind(Y16a, Y16b)
+
+Y16_dat <- xgb.DMatrix(data = as.matrix(Y16[, names(test_strat)[c(3:24, 27:47)]]))
+Y16_pred <-  predict(Gamebeast, Y16_dat)
+Y16_pred > .5
+# Y16a is predicted to win
+
+#Z11 seed prediction. 
+ 
+Z11a <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "Z11a"],]
+
+names(Z11a) <- paste("R", names(Z11a), sep = "")
+  
+Z11b <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "Z11b"],]
+
+names(Z11b) <- paste("O", names(Z11b), sep = "")
+
+
+Z11 <-  cbind(Z11a, Z11b)
+
+Z11_dat <- xgb.DMatrix(data = as.matrix(Z11[, names(test_strat)[c(3:24, 27:47)]]))
+Z11_pred <-  predict(Gamebeast, Z11_dat)
+Z11_pred > .5
+# Z11b is predicted winner
+
+```
+
+
+```{r :: Removing the losers of play in games and replacing correct value for seed}
+Tourney_seed_2017 <-  Tourney_seed[!(Tourney_seed$Seed == 'W11b' | Tourney_seed$Seed == 'W16b' | Tourney_seed$Seed == "Y16b" | Tourney_seed$Seed == "Z11a"),]
+
+Tourney_seed_2017$Seed <- gsub("a", "", Tourney_seed_2017$Seed)
+Tourney_seed_2017$Seed <- gsub("b", "", Tourney_seed_2017$Seed)
+
+
+Tourney_seed1 <-  merge(Tourney_seed_2017, Tourney, by.x = "Seed", by.y = "Seed", all.y = TRUE)
 
 Tourney_seed1 <-  Tourney_seed1[,-4]
+
 ```
 
 ```{r}
+
+# This works for round 1, but this will not work to run through thought the tourney, because of the next game played having 1 does not re
+
+names(Team_Table_NET_AP)[13] <-  "AvG_TO"
+
+
 round2 <-  rep(NA, 64)
 
 
 for (i in 1:32){
-  teams <-  Tourney_seed1$Team[Tourney$Game == i]
-  stats1 <-  Team_Table_NET_AP[Tourney_seed1$TeamID_Year == Team_Table_NET_AP$TeamID_Year[i]]
-  stats2 <-  Team_Table_NET_AP[stats2 == Team_Table_NET_AP$] # How do yu determine the opponent ?
+  teams <-  Tourney_seed1$TeamID_Year[which(Tourney$Game == i)]
+  stats1 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[1],]
+  stats2 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[2],] # How do yu determine the opponent ?
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
   temp_data <-  cbind.data.frame(stats1, stats2)
   # recreat rank diffs in a stats 1 - stats 2
-  pred <-  predict(Gamebeast, temp_data)
+  # Only feed in original XGboost model to create 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names(test_strat)[c(3:24, 27:47)]]))
+  pred <-  predict(Gamebeast, temp_data2)
   sim <- runif(1, min = 0, max = 1)
   if (pred < sim){
-    round2[Tourney$Team == teams[2]] <-  Tourney$Game2[Tourney$Team == teams[2]] # assign round 2 game to team 2 if they were to win the game
+    round2[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney$Game2[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
     
     
   }
   else{
-    round2[Tourney$Team == teams[1]]
+    round2[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney$Game2[which(Tourney_seed1$TeamID_Year == teams[1])]
+  }
+}
+
+Tourney_seed1 <- cbind(Tourney_seed1, round2)
+# Do each round separately in a new for loop refering back to previous round created based on wins. 
+
+
+```
+
+```{r}
+round3 <-  rep(NA, 64)
+
+
+for (i in 1:16){
+  teams <-  Tourney_seed1$TeamID_Year[which(Tourney_seed1$round2 == i)]
+  stats1 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[1],]
+  stats2 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[2],] # How do yu determine the opponent ?
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  # recreat rank diffs in a stats 1 - stats 2
+  # Only feed in original XGboost model to create 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names(test_strat)[c(3:24, 27:47)]]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round3[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney$Game3[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }
+  else{
+    round3[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney$Game3[which(Tourney_seed1$TeamID_Year == teams[1])]
   }
 }
 
 
+sum(!(is.na(round3)))
+Tourney_seed1 <- cbind(Tourney_seed1, round3)
+# Do each round separately in a new for loop refering back to previous round created based on wins. 
 
 ```
 
 
 ```{r}
+round4 <-  rep(NA, 64)
 
-res <- as.data.frame(NA, nrow = nrow(Tourney_seed1), ncol = ncol(30))
 
-pb <- txtProgressBar(min = 0, max = nrow(team_op), style = 3)
-
-for (i in 1:nrow(Tourney_seed1)) {
-  Sys.sleep(0.01)
-   # I need to see progress
-   setTxtProgressBar(pb, i)
-  temp <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == team_op$OTeamID[i],]
-  res[i,1] <- team_op$GameIDR[i]
-
+for (i in 1:8){
+  teams <-  Tourney_seed1$TeamID_Year[which(Tourney_seed1$round3 == i)]
+  stats1 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[1],]
+  stats2 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[2],] # How do yu determine the opponent ?
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  # recreat rank diffs in a stats 1 - stats 2
+  # Only feed in original XGboost model to create 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names(test_strat)[c(3:24, 27:47)]]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round4[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney$Game4[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }
+  else{
+    round4[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney$Game4[which(Tourney_seed1$TeamID_Year == teams[1])]
+  }
 }
-close(pb)
 
-Tor_seed <- res
+
+sum(!(is.na(round4)))
+Tourney_seed1 <- cbind(Tourney_seed1, round4)
+```
+
+```{r}
+round5 <-  rep(NA, 64)
+
+
+for (i in 1:4){
+  teams <-  Tourney_seed1$TeamID_Year[which(Tourney_seed1$round4 == i)]
+  stats1 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[1],]
+  stats2 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[2],] # How do yu determine the opponent ?
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  # recreat rank diffs in a stats 1 - stats 2
+  # Only feed in original XGboost model to create 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names(test_strat)[c(3:24, 27:47)]]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round5[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney$Game5[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }
+  else{
+    round5[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney$Game5[which(Tourney_seed1$TeamID_Year == teams[1])]
+  }
+}
+
+
+sum(!(is.na(round5)))
+Tourney_seed1 <- cbind(Tourney_seed1, round5)
+```
+
+```{r}
+round6 <-  rep(NA, 64) 
+
+
+for (i in 1:2){
+  teams <-  Tourney_seed1$TeamID_Year[which(Tourney_seed1$round5 == i)]
+  stats1 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[1],]
+  stats2 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[2],] # How do yu determine the opponent ?
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  # recreat rank diffs in a stats 1 - stats 2
+  # Only feed in original XGboost model to create 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names(test_strat)[c(3:24, 27:47)]]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round6[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney$Game6[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }
+  else{
+    round6[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney$Game6[which(Tourney_seed1$TeamID_Year == teams[1])]
+  }
+}
+
+
+sum(!(is.na(round6)))
+Tourney_seed1 <- cbind(Tourney_seed1, round6)
+```
+
+```{r :: Championship game model for 2017}
+
+champ_matchup <- for (i in 1:1){
+  teams <-  Tourney_seed1$TeamID_Year[which(Tourney_seed1$round6 == i)]
+}
+
+champ_mR <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[1],]
+
+names(champ_mR) <- paste("R", names(champ_mR), sep = "")
+  
+champ_mO <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[2],]
+
+names(champ_mO) <- paste("O", names(champ_mO), sep = "")
+
+
+champ_m <-  cbind(champ_mR, champ_mO)
+
+champ_mdata <- xgb.DMatrix(data = as.matrix(champ_m[, names(test_strat)[c(3:24, 27:47)]]))
+champ_pred <-  predict(Gamebeast, champ_mdata)
+champ_pred > .5
+
+# We had Gonzaga vs. Butler in the chmpionship game which is half correct Gonzaga made it to the championship and lost to UNC. This is really incredible seeing as we didn't use their entering tourney rank or our rank diffs. 
 
 ```
+
