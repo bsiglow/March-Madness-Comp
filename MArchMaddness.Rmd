@@ -707,9 +707,10 @@ Tourney_seed <- Tourney_seed[Tourney_seed$Season==2017,-3]
 
 ```
 
-```{r :: Creating the play in games}
+```{r :: Creating the play in games this will need to be codded in the future}
 
 ## Hard coded these values in for 2017 play in games will need to further code this in 
+## We will need to first mat 11as, 11bs, 16as, and 16bs then relate to the conference then run throught these models to spit out the teams playing in the tourney
 W11a <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "W11a"],]
 
 names(W11a) <- paste("R", names(W11a), sep = "")
@@ -797,13 +798,18 @@ Tourney_seed1 <-  Tourney_seed1[,-4]
 
 ```
 
-```{r}
+```{r :: First round results outputting into round 2 (predicting winners)}
 
-# This works for round 1, but this will not work to run through thought the tourney, because of the next game played having 1 does not re
+# This works for round 1, but this will not work to run through out the tourney, because of the next game played based of our first matrix. These models work in the new methods, because we used the new tourney matrix this should be reviewed further.
+
+
+
+# This solved an immediate mis label, but will need fixed up-river so we can transition to pure data pulls from r files and drop box. 
 
 names(Team_Table_NET_AP)[13] <-  "AvG_TO"
 
 
+# Creating round2 output i.e. the winners of round  one moving to round2 this will follow till round 6 or teams plying in the championship. 
 round2 <-  rep(NA, 64)
 
 
@@ -835,7 +841,10 @@ Tourney_seed1 <- cbind(Tourney_seed1, round2)
 
 ```
 
-```{r}
+```{r :: Round 2 game predictions}
+
+# Round 3 follows the same method predicting from results of round one games and now predicting winners of our predicted round 2 games. 
+
 round3 <-  rep(NA, 64)
 
 
@@ -869,7 +878,10 @@ Tourney_seed1 <- cbind(Tourney_seed1, round3)
 ```
 
 
-```{r}
+```{r :: Round 3 game predictions}
+
+# Continuing method to create the round 4 column (round 3 resuts)
+
 round4 <-  rep(NA, 64)
 
 
@@ -900,7 +912,7 @@ sum(!(is.na(round4)))
 Tourney_seed1 <- cbind(Tourney_seed1, round4)
 ```
 
-```{r}
+```{r :: Round 4 Game results predictions}
 round5 <-  rep(NA, 64)
 
 
@@ -931,7 +943,7 @@ sum(!(is.na(round5)))
 Tourney_seed1 <- cbind(Tourney_seed1, round5)
 ```
 
-```{r}
+```{r :: Round 5 game predictions}
 round6 <-  rep(NA, 64) 
 
 
