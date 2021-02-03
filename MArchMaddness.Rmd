@@ -457,8 +457,10 @@ save(Game_full, file = "Game_lvl_svg_stats")
 ```
 
 
+
+### If Rerunning you should be able to start here
 # Final game level stats for initital XGBoost
-```{r}
+```{r :: Safe spot to start code for modeling if editing model results or year prediction}
 load(url("https://www.dropbox.com/s/8zqshqwnvnzqkb9/Game_lvl_svg_stats?dl=1"))
 
 
@@ -478,6 +480,8 @@ Game_full$Rank
 
 
 Game_full <- Game_full[,c(1:47,49:53,48)]
+
+
 
 # Game_full is now pre processed for XGBoost
 ```
@@ -579,104 +583,104 @@ confusionMatrix(SmallXGBoost, positive = "1")
 
 
 ```{r :: Tuning max_depth and Min_child}
-
-# Be Careful - This can take a very long time to run
-max_depth_vals <- c(3, 5, 7, 10, 15) # Create vector of max depth values
-min_child_weight <- c(1,3,5,7, 10, 15) # Create vector of min child values
-
-# Expand grid of parameter values
-cv_params <- expand.grid(max_depth_vals, min_child_weight)
-names(cv_params) <- c("max_depth", "min_child_weight")
-# Create results vector
-auc_vec <- error_vec <- rep(NA, nrow(cv_params)) 
-# Loop through results
-for(i in 1:nrow(cv_params)){
-  set.seed(1984)
-  Gbst_tune <- xgb.cv(data = Gtrain, # Set training data
-              
-              nfold = 5, # Use 5 fold cross-validation
-               
-              eta = 0.1, # Set learning rate
-              max.depth = cv_params$max_depth[i], # Set max depth
-              min_child_weight = cv_params$min_child_weight[i], # Set minimum number of samples in node to split
-             
-               
-              nrounds = 100, # Set number of rounds
-              early_stopping_rounds = 20, # Set number of rounds to stop at if there is no improvement
-               
-              verbose = 1, # 1 - Prints out fit
-              nthread = 6, # Set number of parallel threads
-              print_every_n = 20, # Prints out result every 20th iteration
-               
-              objective = "binary:logistic", # Set objective
-              eval_metric = "auc", # Set evaluation metric to use
-              eval_metric = "error") # Set evaluation metric to use
-  auc_vec[i] <- Gbst_tune$evaluation_log$test_auc_mean[Gbst_tune$best_ntreelimit]
-  error_vec[i] <- Gbst_tune$evaluation_log$test_error_mean[Gbst_tune$best_ntreelimit]
-  
-}
+# 
+# # Be Careful - This can take a very long time to run
+# max_depth_vals <- c(3, 5, 7, 10, 15) # Create vector of max depth values
+# min_child_weight <- c(1,3,5,7, 10, 15) # Create vector of min child values
+# 
+# # Expand grid of parameter values
+# cv_params <- expand.grid(max_depth_vals, min_child_weight)
+# names(cv_params) <- c("max_depth", "min_child_weight")
+# # Create results vector
+# auc_vec <- error_vec <- rep(NA, nrow(cv_params)) 
+# # Loop through results
+# for(i in 1:nrow(cv_params)){
+#   set.seed(1984)
+#   Gbst_tune <- xgb.cv(data = Gtrain, # Set training data
+#               
+#               nfold = 5, # Use 5 fold cross-validation
+#                
+#               eta = 0.1, # Set learning rate
+#               max.depth = cv_params$max_depth[i], # Set max depth
+#               min_child_weight = cv_params$min_child_weight[i], # Set minimum number of samples in node to split
+#              
+#                
+#               nrounds = 100, # Set number of rounds
+#               early_stopping_rounds = 20, # Set number of rounds to stop at if there is no improvement
+#                
+#               verbose = 1, # 1 - Prints out fit
+#               nthread = 6, # Set number of parallel threads
+#               print_every_n = 20, # Prints out result every 20th iteration
+#                
+#               objective = "binary:logistic", # Set objective
+#               eval_metric = "auc", # Set evaluation metric to use
+#               eval_metric = "error") # Set evaluation metric to use
+#   auc_vec[i] <- Gbst_tune$evaluation_log$test_auc_mean[Gbst_tune$best_ntreelimit]
+#   error_vec[i] <- Gbst_tune$evaluation_log$test_error_mean[Gbst_tune$best_ntreelimit]
+#   
+# }
 ```
 
 
 ```{r}
-# Join results in dataset
-res_db <- cbind.data.frame(cv_params, auc_vec, error_vec)
-names(res_db)[3:4] <- c("auc", "error") 
-res_db$max_depth <- as.factor(res_db$max_depth) # Convert tree number to factor for plotting
-res_db$min_child_weight <- as.factor(res_db$min_child_weight) # Convert node size to factor for plotting
-# Print AUC heatmap
-g_2 <- ggplot(res_db, aes(y = max_depth, x = min_child_weight, fill = auc)) + # set aesthetics
-  geom_tile() + # Use geom_tile for heatmap
-  theme_bw() + # Set theme
-  scale_fill_gradient2(low = "blue", # Choose low color
-    mid = "white", # Choose mid color
-    high = "red", # Choose high color
-    midpoint =mean(res_db$auc), # Choose mid point
-    space = "Lab", 
-    na.value ="grey", # Choose NA value
-    guide = "colourbar", # Set color bar
-    aesthetics = "fill") + # Select aesthetics to apply
-  labs(x = "Minimum Child Weight", y = "Max Depth", fill = "AUC") # Set labels
-g_2 # Generate plot
+# # Join results in dataset
+# res_db <- cbind.data.frame(cv_params, auc_vec, error_vec)
+# names(res_db)[3:4] <- c("auc", "error") 
+# res_db$max_depth <- as.factor(res_db$max_depth) # Convert tree number to factor for plotting
+# res_db$min_child_weight <- as.factor(res_db$min_child_weight) # Convert node size to factor for plotting
+# # Print AUC heatmap
+# g_2 <- ggplot(res_db, aes(y = max_depth, x = min_child_weight, fill = auc)) + # set aesthetics
+#   geom_tile() + # Use geom_tile for heatmap
+#   theme_bw() + # Set theme
+#   scale_fill_gradient2(low = "blue", # Choose low color
+#     mid = "white", # Choose mid color
+#     high = "red", # Choose high color
+#     midpoint =mean(res_db$auc), # Choose mid point
+#     space = "Lab", 
+#     na.value ="grey", # Choose NA value
+#     guide = "colourbar", # Set color bar
+#     aesthetics = "fill") + # Select aesthetics to apply
+#   labs(x = "Minimum Child Weight", y = "Max Depth", fill = "AUC") # Set labels
+# g_2 # Generate plot
+# 
+# # print error heatmap
+# g_3 <- ggplot(res_db, aes(y = max_depth, x = min_child_weight, fill = error)) + # set aesthetics
+#   geom_tile() + # Use geom_tile for heatmap
+#   theme_bw() + # Set theme
+#   scale_fill_gradient2(low = "blue", # Choose low color
+#     mid = "white", # Choose mid color
+#     high = "red", # Choose high color
+#     midpoint =mean(res_db$error), # Choose mid point
+#     space = "Lab", 
+#     na.value ="grey", # Choose NA value
+#     guide = "colourbar", # Set color bar
+#     aesthetics = "fill") + # Select aesthetics to apply
+#   labs(x = "Minimum Child Weight", y = "Max Depth", fill = "Error") # Set labels
+# g_3 # Generate plot
+# 
+# res_db$max_depth[res_db$error == .2454608]
+# res_db$min_child_weight[res_db$error == .2454608]
+# ```
 
-# print error heatmap
-g_3 <- ggplot(res_db, aes(y = max_depth, x = min_child_weight, fill = error)) + # set aesthetics
-  geom_tile() + # Use geom_tile for heatmap
-  theme_bw() + # Set theme
-  scale_fill_gradient2(low = "blue", # Choose low color
-    mid = "white", # Choose mid color
-    high = "red", # Choose high color
-    midpoint =mean(res_db$error), # Choose mid point
-    space = "Lab", 
-    na.value ="grey", # Choose NA value
-    guide = "colourbar", # Set color bar
-    aesthetics = "fill") + # Select aesthetics to apply
-  labs(x = "Minimum Child Weight", y = "Max Depth", fill = "Error") # Set labels
-g_3 # Generate plot
-
-res_db$max_depth[res_db$error == .2454608]
-res_db$min_child_weight[res_db$error == .2454608]
-```
-
-```{r ::Original Tourney make that has worked in the model}
-
-## Go trhouggh and create all 32 rank for W x y z
-Tourney <-  data.frame(Team = rep(NA, 64), 
-                       Seed = c("W01", "W016", "W02", "W15", "W03","W14", "W04","W13", "W05","W12","W06", "W11", "W07","W10", "W08","W11","X01", "X16", "X02", "X15", "X03","X14", "X04","X13", "X05","X12","X06", "X11", "X07","X10", "X08","X09","Y01", "Y16", "Y02", "Y15", "Y03","Y14", "Y04","Y13", "Y05","Y12","Y06", "Y11", "Y07","Y10", "Y08","Y09","Z01", "Z16", "Z02", "Z15", "Z03","Z14", "Z04","Z13", "Z05","Z12","Z06", "Z07", "Z11","Z08", "Z09","Z10" ) # Work from outsides of range building into the median to create WO1 vs. WO16 and so on reference the march madness brcket. 
-                       ,
-                       Game = c(1,1, 2,2, 3,3,4, 4,5, 5,6, 6,7, 7, 8, 8, 9,9,10,10,11,11,12,12,13,13,14,14,15,15,16,16,17, 17, 18,18,19,19,20,20,21,21,22,22,23,23,24,24,25,25,26,26,27,28,28,29,29,30,30,31,31,32,32),
-                       Game2 = c(1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7,8,8,8,8,9,9,9,9,10,10,10,10,11,11,11,11,12,12,12,12,13,13,13,13,14,14,14,14,15,15,15,15,16,16,16,16), # Up to 16
-                       Game3 = c(rep(1,8),rep(2,8), rep(3,8), rep(4,8),rep(5,8),rep(6,8),rep(7,8),rep(8,8)), # Start with 8 1s up until 8
-                       Game4 = c(rep(1,16),rep(2,16), rep(3,16), rep(4,16)), # 16 1s up until 4
-                       Game5 = c(rep(1,32),rep(2,32)), # 32 1s up until 2
-                       Game6 = c(rep(1,64)) # 64 1s use rep to create 
-                       )
+# ```{r ::Original Tourney make that has worked in the model}
+# 
+# ## Go trhouggh and create all 32 rank for W x y z
+# Tourney <-  data.frame(Team = rep(NA, 64), 
+#                        Seed = c("W01", "W016", "W02", "W15", "W03","W14", "W04","W13", "W05","W12","W06", "W11", "W07","W10", "W08","W11","X01", "X16", "X02", "X15", "X03","X14", "X04","X13", "X05","X12","X06", "X11", "X07","X10", "X08","X09","Y01", "Y16", "Y02", "Y15", "Y03","Y14", "Y04","Y13", "Y05","Y12","Y06", "Y11", "Y07","Y10", "Y08","Y09","Z01", "Z16", "Z02", "Z15", "Z03","Z14", "Z04","Z13", "Z05","Z12","Z06", "Z07", "Z11","Z08", "Z09","Z10" ) # Work from outsides of range building into the median to create WO1 vs. WO16 and so on reference the march madness brcket. 
+#                        ,
+#                        Game = c(1,1, 2,2, 3,3,4, 4,5, 5,6, 6,7, 7, 8, 8, 9,9,10,10,11,11,12,12,13,13,14,14,15,15,16,16,17, 17, 18,18,19,19,20,20,21,21,22,22,23,23,24,24,25,25,26,26,27,28,28,29,29,30,30,31,31,32,32),
+#                        Game2 = c(1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7,8,8,8,8,9,9,9,9,10,10,10,10,11,11,11,11,12,12,12,12,13,13,13,13,14,14,14,14,15,15,15,15,16,16,16,16), # Up to 16
+#                        Game3 = c(rep(1,8),rep(2,8), rep(3,8), rep(4,8),rep(5,8),rep(6,8),rep(7,8),rep(8,8)), # Start with 8 1s up until 8
+#                        Game4 = c(rep(1,16),rep(2,16), rep(3,16), rep(4,16)), # 16 1s up until 4
+#                        Game5 = c(rep(1,32),rep(2,32)), # 32 1s up until 2
+#                        Game6 = c(rep(1,64)) # 64 1s use rep to create 
+#                        )
 ```
 
 
 
 ```{r}
-colnames(Tourney_seed1)[3] <- "RteamID"
+#colnames(Tourney_seed1)[3] <- "RteamID"
 ```
 
 
@@ -709,8 +713,15 @@ Tourney_seed <- Tourney_seed[Tourney_seed$Season==2017,-3]
 
 ```{r :: Creating the play in games this will need to be codded in the future}
 
+
+load(url("https://www.dropbox.com/s/09gkehk7h2vp02w/Team_Season_Data?dl=1"))
+
+names(Team_Table_NET_AP)[13] <-  "AvG_TO"
+```
 ## Hard coded these values in for 2017 play in games will need to further code this in 
 ## We will need to first mat 11as, 11bs, 16as, and 16bs then relate to the conference then run throught these models to spit out the teams playing in the tourney
+```{r :: Skippable chucnk if the following chunk is run }
+
 W11a <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "W11a"],]
 
 names(W11a) <- paste("R", names(W11a), sep = "")
@@ -784,8 +795,10 @@ Z11_pred > .5
 
 ```
 
-
+## Can skip previous chunk if this chunk is run
 ```{r :: Removing the losers of play in games and replacing correct value for seed}
+
+
 Tourney_seed_2017 <-  Tourney_seed[!(Tourney_seed$Seed == 'W11b' | Tourney_seed$Seed == 'W16b' | Tourney_seed$Seed == "Y16b" | Tourney_seed$Seed == "Z11a"),]
 
 Tourney_seed_2017$Seed <- gsub("a", "", Tourney_seed_2017$Seed)
@@ -806,7 +819,7 @@ Tourney_seed1 <-  Tourney_seed1[,-4]
 
 # This solved an immediate mis label, but will need fixed up-river so we can transition to pure data pulls from r files and drop box. 
 
-names(Team_Table_NET_AP)[13] <-  "AvG_TO"
+# names(Team_Table_NET_AP)[13] <-  "AvG_TO"
 
 
 # Creating round2 output i.e. the winners of round  one moving to round2 this will follow till round 6 or teams plying in the championship. 
