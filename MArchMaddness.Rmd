@@ -1009,6 +1009,6 @@ champ_pred <-  predict(Gamebeast, champ_mdata)
 champ_pred > .5
 
 # We had Gonzaga vs. Butler in the chmpionship game which is half correct Gonzaga made it to the championship and lost to UNC. This is really incredible seeing as we didn't use their entering tourney rank or our rank diffs. 
-
+# After edits and the new run the results changed. 
 ```
 
