@@ -827,7 +827,7 @@ round2 <-  rep(NA, 64)
 
 
 for (i in 1:32){
-  teams <-  Tourney_seed1$TeamID_Year[which(Tourney$Game == i)]
+  teams <-  Tourney_seed1$TeamID_Year[which(Tourney_seed1$Game == i)]
   stats1 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[1],]
   stats2 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[2],] # How do yu determine the opponent ?
   names(stats1) <- paste("R", names(stats1), sep = "")
@@ -839,12 +839,12 @@ for (i in 1:32){
   pred <-  predict(Gamebeast, temp_data2)
   sim <- runif(1, min = 0, max = 1)
   if (pred < sim){
-    round2[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney$Game2[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    round2[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney_seed1$Game2[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
     
     
   }
   else{
-    round2[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney$Game2[which(Tourney_seed1$TeamID_Year == teams[1])]
+    round2[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney_seed1$Game2[which(Tourney_seed1$TeamID_Year == teams[1])]
   }
 }
 
@@ -874,12 +874,12 @@ for (i in 1:16){
   pred <-  predict(Gamebeast, temp_data2)
   sim <- runif(1, min = 0, max = 1)
   if (pred < sim){
-    round3[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney$Game3[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    round3[which(Tourney_seed1$TeamID_Year == teams[2])] <- Tourney_seed1$Game3[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
     
     
   }
   else{
-    round3[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney$Game3[which(Tourney_seed1$TeamID_Year == teams[1])]
+    round3[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney_seed1$Game3[which(Tourney_seed1$TeamID_Year == teams[1])]
   }
 }
 
@@ -911,12 +911,12 @@ for (i in 1:8){
   pred <-  predict(Gamebeast, temp_data2)
   sim <- runif(1, min = 0, max = 1)
   if (pred < sim){
-    round4[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney$Game4[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    round4[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney_seed1$Game4[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
     
     
   }
   else{
-    round4[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney$Game4[which(Tourney_seed1$TeamID_Year == teams[1])]
+    round4[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney_seed1$Game4[which(Tourney_seed1$TeamID_Year == teams[1])]
   }
 }
 
@@ -942,12 +942,12 @@ for (i in 1:4){
   pred <-  predict(Gamebeast, temp_data2)
   sim <- runif(1, min = 0, max = 1)
   if (pred < sim){
-    round5[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney$Game5[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    round5[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney_seed1$Game5[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
     
     
   }
   else{
-    round5[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney$Game5[which(Tourney_seed1$TeamID_Year == teams[1])]
+    round5[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney_seed1$Game5[which(Tourney_seed1$TeamID_Year == teams[1])]
   }
 }
 
@@ -973,12 +973,12 @@ for (i in 1:2){
   pred <-  predict(Gamebeast, temp_data2)
   sim <- runif(1, min = 0, max = 1)
   if (pred < sim){
-    round6[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney$Game6[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    round6[which(Tourney_seed1$TeamID_Year == teams[2])] <-  Tourney_seed1$Game6[which(Tourney_seed1$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
     
     
   }
   else{
-    round6[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney$Game6[which(Tourney_seed1$TeamID_Year == teams[1])]
+    round6[which(Tourney_seed1$TeamID_Year == teams[1])] <- Tourney_seed1$Game6[which(Tourney_seed1$TeamID_Year == teams[1])]
   }
 }
 
@@ -1006,9 +1006,14 @@ champ_m <-  cbind(champ_mR, champ_mO)
 
 champ_mdata <- xgb.DMatrix(data = as.matrix(champ_m[, names(test_strat)[c(3:24, 27:47)]]))
 champ_pred <-  predict(Gamebeast, champ_mdata)
-champ_pred > .5
+champ_pred > .5 # use random number from loop run function with a seed
 
 # We had Gonzaga vs. Butler in the chmpionship game which is half correct Gonzaga made it to the championship and lost to UNC. This is really incredible seeing as we didn't use their entering tourney rank or our rank diffs. 
 # After edits and the new run the results changed. 
+```
+
+
+```{r}
+# names(data)[!names(data) %in% names(data2)] # way to compare col names with one another 
 ```
 
