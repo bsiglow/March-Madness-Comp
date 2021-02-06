@@ -259,7 +259,14 @@ final_four_count
 ```{r}
 winner <- rep(NA, 100)
 # For 1 to 10,000
+
+pb <- txtProgressBar(min = 0, max = nrow(team_op), style = 3)
+
 for(x in 1:100){
+  
+  Sys.sleep(0.01)
+   # I need to see progress
+   setTxtProgressBar(pb, i)
   # Set seed for reproducability
   set.seed(x)
   # Simulate tournament
@@ -267,9 +274,13 @@ for(x in 1:100){
   # Extract tournament winner
   winner[x] <- temp$TeamID_Year[which(temp$champ == 1)]
 }
+close(pb)
 
 champ_count <- as.data.frame(table(winner))
 # Print out tabulated results
 champ_count
+
+
+# In 100 iterations the the only winner shown was Villinova which is concerning for the loop. 
 ```
 
