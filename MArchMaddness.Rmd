@@ -532,6 +532,9 @@ Gamebeast <- xgboost(data = Gtrain,
                eval_metric = "auc",
                eval_metric = "error")
 
+
+
+xgb.save(Gamebeast, "small_test_xgmodel")
 ```
 
 ```{r :: Light XG Results}
@@ -700,6 +703,10 @@ Tourney <-  data.frame(Team = rep(NA, 64),
                        Game5 = c(rep(1,16),rep(2,16),rep(2,16),rep(1,16)), # final 4 two games 4 numbers
                        Game6 = c(rep(1,64)) # championship 1 game 2 numbers 
                        )
+
+Tourney_base <-  Tourney
+
+write.csv(Tourney_base, file = "Tourney_base_table")
 ```
 
 ```{r :: Creating one year tournament 2017}
@@ -717,6 +724,10 @@ Tourney_seed <- Tourney_seed[Tourney_seed$Season==2017,-3]
 load(url("https://www.dropbox.com/s/09gkehk7h2vp02w/Team_Season_Data?dl=1"))
 
 names(Team_Table_NET_AP)[13] <-  "AvG_TO"
+
+Tourn_2017_stats <- Team_Table_NET_AP
+
+save(Tourn_2017_stats, file = "Tourney_2017_stats")
 ```
 ## Hard coded these values in for 2017 play in games will need to further code this in 
 ## We will need to first mat 11as, 11bs, 16as, and 16bs then relate to the conference then run throught these models to spit out the teams playing in the tourney
@@ -808,6 +819,10 @@ Tourney_seed_2017$Seed <- gsub("b", "", Tourney_seed_2017$Seed)
 Tourney_seed1 <-  merge(Tourney_seed_2017, Tourney, by.x = "Seed", by.y = "Seed", all.y = TRUE)
 
 Tourney_seed1 <-  Tourney_seed1[,-4]
+
+Tourn_2017_64 <-  Tourney_seed1
+
+save(Tourn_2017_64, file = "Tourney_2017_64")
 
 ```
 
