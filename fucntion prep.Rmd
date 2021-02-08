@@ -289,16 +289,26 @@ champ_count
 # Trying to make a loop to get a count of every time each team makes it to each round. 
 res <- as.data.frame(NA, nrow = 100 , ncol = 7)
 
-pb <- txtProgressBar(min = 0, max = nrow(team_op), style = 3)
+#pb <- txtProgressBar(min = 0, max = nrow(team_op), style = 3)
 
-for (i in 1:nrow(res)) {
-   # I need to see progress
-   setTxtProgressBar(pb, i)
-  temp <- 
+for (a in 100){
+   
+  for( b in 100){
+    
+  for (c in 64) {
+    
+  temp <- sim_res[[a]][sim_res[[a]]$TeamID_Year == sim_res[[b]]$TeamID_Year[c], ]   
+    
+    res[c,1] <- temp$TeamID_Year[nrow(temp)]
+    
+  }  
+  }
+}
 ```
 
 ```{r}
-sim_res[[5]]$TeamID_Year[!is.na(sim_res[[5]]$round5)]
+sim_res[[1]]$TeamID_Year[1][nrow = 1]
+sum(!is.na(sim_res[[1]]$round2[1]))
 ```
 
 ```{r}
