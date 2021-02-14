@@ -238,37 +238,16 @@ return(Tourn_2017_64)
 }
 ```
 
-```{r :: Re_run sim 100 times, echo = FALSE}
-
-Final_four <- rep(NA, 64)
-# For 1 to 10,000
-for(x in 1:5){
-  # Set seed for reproducability
-  set.seed(x)
-  # Simulate tournament
-  temp <- Tourn_sim(Tourn_2017_64 = Tourn_2017_64, Tourn_2017_stats = Tourn_2017_stats, Gamebeast = Gamebeast, names = names)
-  # Extract tournament winner
-  Final_four[x] <- temp$TeamID_Year[which(!is.na(temp$round5))]
-}
-
-final_four_count <- as.data.frame(table(Final_four))
-# Print out tabulated results
-final_four_count
-
-# This does not pull the championship game. 
-
-
-```
 
 ```{r}
-sim_res <-  vector(mode = "list", length = 100)
+sim_res <-  vector(mode = "list", length = 101)
 
-winner <- rep(NA, 100)
+winner <- rep(NA, 101)
 # For 1 to 10,000
 
-pb <- txtProgressBar(min = 0, max = 100, style = 3)
+pb <- txtProgressBar(min = 0, max = 101, style = 3)
 
-for(x in 1:100){
+for(x in 1:101){
   
   #Sys.sleep(0.01) # remove this to save time.
    # I need to see progress
@@ -354,7 +333,7 @@ Tourn_function <-  function(tourn_result)
 # In the Round 3 results after the first team call do team[team == Outcome$TeamID_Year[Outcome$Round2 == "W"]]
     
 Outcome <- tourn_result[,8:15] 
-   
+Outcome[,3:8] <- NA    
 #Round2 <- rep(NA,64)
 
 
@@ -367,15 +346,15 @@ for (i in 1:32){
     Outcome$Round2[which(tourn_result$TeamID_Year == team[2])] <-  "W"
     Outcome$Round2[which(tourn_result$TeamID_Year == team[1])] <- "L" 
     }else{
-    Outcome$Round2[which(tourn_result$TeamID_Year == team[1])] <-  "w"
+    Outcome$Round2[which(tourn_result$TeamID_Year == team[1])] <-  "W"
     Outcome$Round2[which(tourn_result$TeamID_Year == team[2])] <- "L"
   }
   #Outcome <- cbind(Outcome, Round2)
 }
 # Need to add method the give win to higher IF sTAT1 == sTAT2
 for (i in 1:16){
-  team <-  tourn_result$TeamID_Year[which(tourn_result$Game == i)]
-  team <- team[team == ]
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game2 == i)]
+  team <- team[team %in% Outcome$TeamID_Year[Outcome$Round2 == "W"]]
   stats1 <-  tourn_result$Round3[tourn_result$TeamID_Year == team[1]]
   stats2 <-  tourn_result$Round3[tourn_result$TeamID_Year == team[2]]
   
@@ -383,50 +362,85 @@ for (i in 1:16){
     Outcome$Round3[which(tourn_result$TeamID_Year == team[2])] <-  "W"
     Outcome$Round3[which(tourn_result$TeamID_Year == team[1])] <- "L" 
     }else{
-    Outcome$Round3[which(tourn_result$TeamID_Year == team[1])] <-  "w"
+    Outcome$Round3[which(tourn_result$TeamID_Year == team[1])] <-  "W"
     Outcome$Round3[which(tourn_result$TeamID_Year == team[2])] <- "L"
   }
 }
+for (i in 1:8){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game3 == i)]
+  team <- team[team %in% Outcome$TeamID_Year[Outcome$Round3 == "W"]]
+  stats1 <-  tourn_result$Round4[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Round4[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Round4[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Round4[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Round4[which(tourn_result$TeamID_Year == team[1])] <-  "W"
+    Outcome$Round4[which(tourn_result$TeamID_Year == team[2])] <- "L"
+  }
+}
+for (i in 1:4){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game4 == i)]
+  team <- team[team %in% Outcome$TeamID_Year[Outcome$Round4 == "W"]]
+  stats1 <-  tourn_result$Round5[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Round5[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Round5[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Round5[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Round5[which(tourn_result$TeamID_Year == team[1])] <-  "W"
+    Outcome$Round5[which(tourn_result$TeamID_Year == team[2])] <- "L"
+  }
+}
+for (i in 1:2){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game5 == i)]
+  team <- team[team %in% Outcome$TeamID_Year[Outcome$Round5 == "W"]]
+  stats1 <-  tourn_result$Round6[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Round6[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Round6[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Round6[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Round6[which(tourn_result$TeamID_Year == team[1])] <-  "W"
+    Outcome$Round6[which(tourn_result$TeamID_Year == team[2])] <- "L"
+  }
+}
+for (i in 1:1){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game6 == i)]
+  team <- team[team %in% Outcome$TeamID_Year[Outcome$Round6 == "W"]]
+  stats1 <-  tourn_result$Champion[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Champion[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Champion[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Champion[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Champion[which(tourn_result$TeamID_Year == team[1])] <-  "W"
+    Outcome$Champion[which(tourn_result$TeamID_Year == team[2])] <- "L"
+  }
+}
+Outcome[is.na(Outcome)] <- "NC" #NC meaning not continued.
+Outcome$TeamID <-  str_split_fixed(Outcome$TeamID_Year, pattern = " ", 2)[,2]
+Team_names <-  read.csv("https://www.dropbox.com/s/2mabrsebsh9p227/MTeams.csv?dl=1")
+Team_names <-  Team_names[,1:2]
+Outcome <- merge(Outcome, Team_names, by.x = "TeamID", by.y = "TeamID", all.x = TRUE)
+Outcome <- Outcome[,c(10,1:9)]
+
+return(Outcome)
 }
   
 ```
 
-
-```{r, echo = FALSE}
-sim_res[[1]]$TeamID_Year[1][nrow = 1]
-sum(!is.na(sim_res[[1]]$round2[1]))
+```{r}
+Outcome <-  Tourn_function(tourn_result = tourn_result)
 ```
 
-```{r, echo = FALSE}
-count(!is.na(sim_res[[5]]$round3[sim_res[[5]]$TeamID_Year == "2017 1437"]))
+```{r}
+
 ```
 
-```{r, echo = FALSE}
-winner <- rep(NA, 100)
-# For 1 to 10,000
-
-pb <- txtProgressBar(min = 0, max = 100, style = 3)
-
-for(x in 1:100){
-  
-  Sys.sleep(0.01) # remove this to save time.
-   # I need to see progress
-   setTxtProgressBar(pb, x)
-  # Set seed for reproducability
-  set.seed(x)
-  # Simulate tournament
-  temp <- Tourn_sim(Tourn_2017_64 = Tourn_2017_64, Tourn_2017_stats = Tourn_2017_stats, Gamebeast = Gamebeast, names = names)
-  # Extract tournament winner
-  winner[x] <- temp$TeamID_Year[which(temp$champ == 1)]
-}
-close(pb)
-
-champ_count <- as.data.frame(table(winner))
-# Print out tabulated results
-champ_count
-
-
-# In 100 iterations the the only winner shown was Villinova which is concerning for the loop. 
-```
 
 
