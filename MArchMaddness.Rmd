@@ -534,7 +534,7 @@ Gamebeast <- xgboost(data = Gtrain,
 
 
 
-xgb.save(Gamebeast, "small_test_xgmodel")
+xgb.save(Gamebeast, "small_test_xgmodel") ## This can also save an rda 
 ```
 
 ```{r :: Light XG Results}

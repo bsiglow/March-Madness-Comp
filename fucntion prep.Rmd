@@ -28,6 +28,7 @@ library(OptimalCutpoints)
 
 
 ```{r :: Load in files}
+setwd("C://Users//Ben Siglow//Documents//Martin RA//March Madness//March-Madness-Comp")
 Tourney_base <- read.csv("https://www.dropbox.com/s/zhb810pe94bd8ik/Tourney_base_table?dl=1")
 load(url("https://www.dropbox.com/s/jk3kfm9irxawt90/Tourney_2017_stats?dl=1"))
 load(url("https://www.dropbox.com/s/jr2hvn018s9df8j/Tourney_2017_64?dl=1"))
@@ -56,10 +57,13 @@ names <- c("RFG_Prec","RAvg_Score","RAVG_OT","RAvg_FGA","RFG3_Prec","RAvg_FGA3" 
 ```
 
 
+
+### Review Function
+
 ```{r :: Tourney function}
 Tourn_sim <- function(Tourn_2017_64,Tourn_2017_stats,Gamebeast, names)
 {
-  ######### Game 1 predictions for Round 2 competiiton ##################################################################################################################################################################################
+  ######### Game 1 predictions for Round 2 competition ##################################################################################################################################################################################
   
 round2 <-  rep(NA, 64)
 
@@ -234,7 +238,7 @@ return(Tourn_2017_64)
 }
 ```
 
-```{r :: Re_run sim 100 times}
+```{r :: Re_run sim 100 times, echo = FALSE}
 
 Final_four <- rep(NA, 64)
 # For 1 to 10,000
@@ -286,36 +290,118 @@ champ_count
 
 
 ```{r}
-# Trying to make a loop to get a count of every time each team makes it to each round. 
-res <- as.data.frame(NA, nrow = 100 , ncol = 7)
+# Trying to make a loop to get a count of every time each team makes it to each round.
+# just do this with rbind
 
-#pb <- txtProgressBar(min = 0, max = nrow(team_op), style = 3)
 
-for (a in 100){
-   
-  for( b in 100){
-    
-  for (c in 64) {
-    
-  temp <- sim_res[[a]][sim_res[[a]]$TeamID_Year == sim_res[[b]]$TeamID_Year[c], ]   
-    
-    res[c,1] <- temp$TeamID_Year[nrow(temp)]
-    
-  }  
-  }
+
+Tourney_projections <- as.data.frame(do.call("rbind", sim_res))
+
+
+Tourney_projections[,10:15][!is.na(Tourney_projections[,10:15])] <- 1
+Tourney_projections[,10:15][is.na(Tourney_projections[,10:15])] <- 0
+Tourney_projections <- Tourney_projections[,c(1:3,10:15)]
+Tourney_projections$round1 <- 1
+
+teams <- as.data.frame(unique(Tourney_projections[,3]))
+colnames(teams)[1] <- "TeamID_Year"
+
+teams$Round1 <- NA
+teams$Round2 <- NA
+teams$Round3 <- NA
+teams$Round4 <- NA
+teams$Round5 <- NA
+teams$Round6 <- NA
+teams$Champion <- NA
+teams$Seed <- NA
+
+
+for(i in 1:nrow(teams)){
+  temp <- Tourney_projections[Tourney_projections$TeamID_Year == teams$TeamID_Year[i],]
+  
+  teams[i,2] <- sum(temp$round1)
+  teams[i,3] <- sum(temp$round2)
+  teams[i,4] <- sum(temp$round3)
+  teams[i,5] <- sum(temp$round4)
+  teams[i,6] <- sum(temp$round5)
+  teams[i,7] <- sum(temp$round6)
+  teams[i,8] <- sum(temp$champ)
+  teams[i,9] <- temp$Seed[nrow(temp)]
 }
+
+## Match the individual names of teams and count results after removing game values and replacing the number values in rounds to 1 and 0 then create round 1 - championship counts with table call we used in champ count. 
+
 ```
 
 ```{r}
+tourn_route <- read.csv("https://www.dropbox.com/s/zhb810pe94bd8ik/Tourney_base_table?dl=1")
+
+tourn_result <-  merge(tourn_route, teams, by.x = "Seed", by.y = "Seed", all.y = TRUE)
+
+tourn_result <- tourn_result[,-c(2,3)]
+```
+
+
+
+### Function for count result
+
+```{r}
+Tourn_function <-  function(tourn_result)
+{
+
+# Revert back to havingg half empty data frame of outcome 8:15
+# Revert back to "W" and "L" based on stat differnce and add value to the table
+# In the Round 3 results after the first team call do team[team == Outcome$TeamID_Year[Outcome$Round2 == "W"]]
+    
+Outcome <- tourn_result[,8:15] 
+   
+#Round2 <- rep(NA,64)
+
+
+for (i in 1:32){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game == i)]
+  stats1 <-  tourn_result$Round2[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Round2[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Round2[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Round2[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Round2[which(tourn_result$TeamID_Year == team[1])] <-  "w"
+    Outcome$Round2[which(tourn_result$TeamID_Year == team[2])] <- "L"
+  }
+  #Outcome <- cbind(Outcome, Round2)
+}
+# Need to add method the give win to higher IF sTAT1 == sTAT2
+for (i in 1:16){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game == i)]
+  team <- team[team == ]
+  stats1 <-  tourn_result$Round3[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Round3[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Round3[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Round3[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Round3[which(tourn_result$TeamID_Year == team[1])] <-  "w"
+    Outcome$Round3[which(tourn_result$TeamID_Year == team[2])] <- "L"
+  }
+}
+}
+  
+```
+
+
+```{r, echo = FALSE}
 sim_res[[1]]$TeamID_Year[1][nrow = 1]
 sum(!is.na(sim_res[[1]]$round2[1]))
 ```
 
-```{r}
+```{r, echo = FALSE}
 count(!is.na(sim_res[[5]]$round3[sim_res[[5]]$TeamID_Year == "2017 1437"]))
 ```
 
-```{r}
+```{r, echo = FALSE}
 winner <- rep(NA, 100)
 # For 1 to 10,000
 
