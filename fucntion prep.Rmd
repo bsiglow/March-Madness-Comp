@@ -439,8 +439,18 @@ Outcome <-  Tourn_function(tourn_result = tourn_result)
 ```
 
 ```{r}
-
+Bracket_call <- function(Round){
+  Round <- tolower(as.character(Round))
+  a <- c("1", "first", "one", "starting","64", "Round_of_64")
+  b <- c("2", "second", "two")
+  c <- c("3", "third", "three")
+  d <- c("4", "fourth", "four")
+  e <- c()
+}
 ```
 
 
+```{r}
+
+```
 
