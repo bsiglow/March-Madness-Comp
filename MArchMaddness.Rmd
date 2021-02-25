@@ -406,7 +406,7 @@ res <- as.data.frame(NA, nrow = nrow(team_op), ncol = ncol(30))
 pb <- txtProgressBar(min = 0, max = nrow(team_op), style = 3)
 
 for (i in 1:nrow(team_op)) {
-  Sys.sleep(0.01)
+  
    # I need to see progress
    setTxtProgressBar(pb, i)
   temp <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == team_op$OTeamID[i],]
