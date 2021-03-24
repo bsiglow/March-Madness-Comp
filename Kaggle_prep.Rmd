@@ -1,0 +1,683 @@
+---
+title: "Kaggle_comp_set_up"
+author: "Benjamin Siglow"
+date: "3/16/2021"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(devtools)
+library(xgboostExplainer)
+library(tidyverse)
+library(ggdark)
+library(rattle)	
+library(RColorBrewer)
+library(randomForest)
+library(caTools)
+library(caret)
+library(rpart)
+library(splitstackshape)
+library(xgboost)
+library(Metrics)
+library(pROC)
+library(SHAPforxgboost)
+library(xgboostExplainer)
+library(OptimalCutpoints)
+
+```
+
+```{r :: Read in original Data}
+OG_RegSeasonStat <-  read.csv("https://www.dropbox.com/s/n28iujsk23aqyq9/MRegularSeasonDetailedResults.csv?dl=1")
+
+```
+
+```{r :: Pre-processing splitting teams}
+#str(OG_RegSeasonStat) # will need to merge in rank data from the teams excel doc , currently working on individual team table
+
+teams_pros <-  OG_RegSeasonStat # combining season and team ids to create a team data frame 
+
+teams_pros$WTIDSeason <- paste(teams_pros$Season, teams_pros$WTeamID)
+sum(is.na(teams_pros$WTeamID))
+teams_pros$LTIDSeason <-paste(teams_pros$Season, teams_pros$LTeamID)
+sum(is.na(teams_pros$LTeamID))
+```
+
+```{r :: Creating Team ID}
+teams <- as.data.frame(unique(c(teams_pros$LTIDSeason, teams_pros$WTIDSeason)))
+sum(is.na(teams$`unique(c(teams_pros$LTIDSeason, teams_pros$WTIDSeason))`))
+colnames(teams)[1] <-  "TeamID"
+```
+
+```{r :: Creating winning team data frame} 
+# need to check on the Wloc 
+#teams_prossmall <-  teams_pros[1:10,] # small data frame to confirm cleaning
+#a_teams_prossmall <-  teams_prossmall[,-36] # Removing Losing team info (Smallframe)
+a_teams_pros <-  teams_pros[,-36] # Removing Losing team info 
+a_teams_pros$Score_diff <-  a_teams_pros$WScore - a_teams_pros$LScore # Creating score differenctial
+a_teams_pros <-  a_teams_pros[,grep(pattern = "L", colnames(a_teams_pros),ignore.case = FALSE , invert = TRUE)] # Removing all columns relating to losing team 
+colnames(a_teams_pros)[19] <- "Team" # Row name change
+colCleanW <- function(x){ colnames(x) <- gsub("W", "", colnames(x)); x }  # Removing all prefix W in colnames
+a_teams_pros <-  colCleanW(a_teams_pros) # Running function
+a_teams_pros <-  a_teams_pros[,-c(1:3)] # Removing redundant columns, can be removed to spot check 
+```
+
+
+```{r :: Creating losing team data frame}
+b_teams_pros <-  teams_pros[,-35] # Removing Winning team info 
+b_teams_pros$Score_diff <-  b_teams_pros$LScore - b_teams_pros$WScore # Creating score differential
+b_teams_pros <-  b_teams_pros[,grep(pattern = "W", colnames(b_teams_pros),ignore.case = FALSE , invert = TRUE)] # Removing all columns relating to losing team 
+colnames(b_teams_pros)[19] <- "Team" # Row name change
+colCleanW <- function(x){ colnames(x) <- gsub("L", "", colnames(x)); x }  # Removing all prefix W in colnames
+b_teams_pros <-  colCleanW(b_teams_pros) # Running function
+b_teams_pros <-  b_teams_pros[,-c(1:3)] # Removing redundant columns, can be removed to spot check
+```
+
+```{r :: Creating win loss column}
+#teams_small_a <-  rbind(a_teams_prossmall,b_teams_prossmall) # creating winning and losing team stats in small format
+teams_all <-  rbind(a_teams_pros, b_teams_pros) # Creating team Data Frame
+
+teams_all$W_L <-  as.numeric(teams_all$Score_diff > 0) # Creating win loss column 
+sum(is.na(teams_all$Team))
+```
+
+```{r :: Spot check}
+length(unique(teams$TeamID))
+length(unique(teams_all$Team))
+```
+
+
+```{r :: Loop to create each year/team results}
+res <-  as.data.frame(matrix(NA, nrow = nrow(teams), ncol = 25))
+                      
+for (i in 1:nrow(teams)){
+  temp <- teams_all[teams_all$Team == teams$TeamID[i], ]
+  res[i,1] <- teams$TeamID[i] # To add in individual team id I believe this works
+  res[i, 2] <-  sum(temp$FGM)/sum(temp$FGA) 
+  res[i,3] <- mean(temp$Score)
+  res[i,4] <- mean(temp$NumOT)
+  res[i, 5] <- mean(temp$FGA)
+  res[i, 6] <- sum(temp$FGM3)/sum(temp$FGA3)
+  res[i,7] <- mean(temp$FGA3)
+  res[i, 8] <- sum(temp$FTM)/sum(temp$FTA)
+  res[i, 9] <-  mean(temp$FTA)
+  res[i, 10] <- mean(temp$OR)
+  res[i, 11] <- mean(temp$DR)
+  res[i, 12] <- mean(temp$Ast)
+  res[i, 13] <- mean(temp$TO)
+  res[i, 14] <- mean(temp$Stl)
+  res[i, 15] <- mean(temp$Blk)
+  res[i, 16] <- mean(temp$PF)
+  res[i, 17] <- mean(temp$Score_diff)
+  res[i, 18] <- sum(temp$W_L)
+  res[i, 19] <- length(temp$Score) - sum(temp$W_L)
+  res[i, 20] <- sum(temp$FGA - temp$FGA3)/sum(temp$FGA3)
+  
+}
+
+names(res) <-  c("TeamID_Year", "FG_Prec", "Avg_Score","AVG_OT", "Avg_FGA", "FG3_Prec", "Avg_FGA3", "FT_Prec", "AVG_FTA", "AVG_OR", "AVG_DR", "AVG_AST", "ACG_TO", "AvG_Stl", "AVG_Blk", "AVG_PF", "AVG_Scor_Diff", "Num_Wins","Num_Loss","2pt_3pt_ratio" , "Avg_Rank", "Best_Rank", "Final_NET_Rank", "Final_AP_Rank") # Rename
+
+teams_all1 <-  res
+
+length(unique(teams_all1$TeamID_Year)) # Spot Check
+```
+
+```{r :: Read in rank data for rank columns}
+rank_table <-  read.csv("https://www.dropbox.com/s/hf7omb5pgmv55zb/MMasseyOrdinals.csv?dl=1")
+
+rank_test <- rank_table
+
+
+#der <-  rank_test %>%
+ # filter((Season == 2013) & (TeamID == 1104))
+#head(der)
+
+#min(der$OrdinalRank)
+
+#length(unique(rank_test$SystemName))
+
+```
+
+```{r :: Creating teamID for rank table}
+rank_test$TeamID_Year <-  paste(rank_table$Season, rank_table$TeamID)
+
+length(unique(rank_test$TeamID_Year))
+
+```
+
+
+
+```{r :: Longer loop for rank addition}
+for (i in 1:nrow(teams_all1)){
+  temp <- rank_test[rank_test$TeamID_Year == teams_all1$TeamID_Year[i], ]
+  teams_all1[i,21] <- mean(temp$OrdinalRank, na.rm = TRUE)
+  teams_all1[i,22] <- min(temp$OrdinalRank, na.rm = TRUE)
+}
+# Exclud this chunck 
+# Saving to csv, however could also add mode and median of rank or create chart of each ranking conglomerant 
+# May not need
+```
+
+```{r :: Read out to csv}
+Teams_rank <-  teams_all1
+write.csv(Teams_rank, file = "Kaggle_Team_Table")
+```
+
+
+```{r :: Spot check}
+check_rank_values_all <-  rank_test %>%
+  filter(TeamID_Year == "2003 1328") %>%
+  select(c(OrdinalRank , RankingDayNum)) %>%
+  as.data.frame()
+check_rank_values_all
+```
+
+Issues with read in. 
+
+<!-- ```{r :: Read in above made CSV from drop box} -->
+<!-- Team_table_csv <-  load("Kaggle_Team_Table") # This will be TeamsTable made above. -->
+<!-- team_full <-  Team_table_csv -->
+<!-- summary(Team_table_csv) # Created 5807 NA values through the loop. This will need to be reviewed.  -->
+<!-- ``` -->
+
+```{r :: creating the NET value to be merged in}
+
+net_score <- rank_test %>%
+  filter(SystemName == "NET") %>%
+  select(c(TeamID_Year, RankingDayNum, OrdinalRank)) %>%
+  as.data.frame() # Creating data fram of ordinal ranks from NET
+
+teams_net <- as.data.frame(unique(net_score$TeamID_Year))
+colnames(teams_net)[1] <- "TeamID_Year" # Creating unique names
+
+cc1 <-  as.data.frame(matrix(NA, nrow = nrow(teams_net), ncol = 3)) # data frame for NET rank loop
+                      
+for (i in 1:nrow(teams_net)){
+  temp <- net_score[net_score$TeamID_Year == teams_net$TeamID_Year[i], ]
+  cc1[i, 1] <- teams_net$TeamID_Year[i]
+  cc1[i, 2] <- max(temp$RankingDayNum)
+  cc1[i, 3] <- temp$OrdinalRank[nrow(temp)] # Pull in the final score
+  
+} # loop to confirm most recent rank
+
+#cc2 <- merge(cc1, net_score, by.x = c("V1", "V2"), by.y = c("TeamID_Year", "RankingDayNum"), all.x = TRUE) # Merging data frame to have the final NET rank
+
+#cc2 <- cc2[,c(1,3)] # removing extra columns
+
+# Thi
+Team_Table_NET <- merge(Teams_rank, cc1, by.x = "TeamID_Year", by.y = "V1", all.x = TRUE) # merginig to create table with final NET score
+
+# This needs changed when the data load issue is fixed
+
+Team_Table_NET <- Team_Table_NET[,-c(23, 24, 25,26)] # Removing uneeded columns
+
+colnames(Team_Table_NET)[23] <- "Final_NET_Rank" # rename new column
+```
+
+```{r :: Creating Final_AP}
+
+# Add the MAX ap score then add 26 + 1 for AP score 
+
+ap_score <- rank_test %>%
+  filter(SystemName == "AP") %>%
+  select(c(TeamID_Year, RankingDayNum, OrdinalRank)) %>%
+  as.data.frame() # Creating ap_score data frame
+
+teams_ap <-  as.data.frame(unique(ap_score$TeamID_Year))
+colnames(teams_ap)[1] <- "TeamID_Year" #creating ap_scor team names
+
+
+#sum(is.na(ap_score$OrdinalRank))
+
+#length(unique(ap_score$TeamID_Year))
+
+dd1 <-  as.data.frame(matrix(NA, nrow = nrow(teams_ap), ncol = 3)) # empty data frame for loop
+                      
+for (i in 1:nrow(teams_ap)){
+  temp <- ap_score[ap_score$TeamID_Year == teams_ap$TeamID_Year[i], ]
+  dd1[i, 1] <- teams_ap$TeamID_Year[i]
+  dd1[i, 2] <- max(temp$RankingDayNum)
+  dd1[i, 3] <- temp$OrdinalRank[nrow(temp)]
+  dd1[i, 4] <- max(temp$OrdinalRank)
+} # loop to create final AP score day number
+
+#dd2 <- merge(dd1, ap_score, by.x = c("V1", "V2"), by.y = c("TeamID_Year", "RankingDayNum"), all.x = TRUE) # Merging to use day number and team ID to have AP score
+
+#dd2 <- dd2[,c(1,3)] # Removing columns
+
+
+Team_Table_NET_AP <- merge(Team_Table_NET, dd1, by.x = "TeamID_Year", by.y = "V1", all.x = TRUE) # Merginig fro final data frame
+
+Team_Table_NET_AP <- Team_Table_NET_AP[,-c(24)]
+
+colnames(Team_Table_NET_AP)[24] <- "Final_AP_Rank" # Renaming final data frame
+colnames(Team_Table_NET_AP)[25] <- "Worst_AP_Rank"
+```
+
+# Next Steps 
+## Need to replace NAS
+### For AP (occured since 2003) replace NAs with 26 + 1 or Max(ap_score$OrdinalScore) + 1
+### For NET the scores are not in the data until 2019 we need to determine best process to deal with this posssibly split the data
+
+
+##Create game level data
+```{r :: game_level processing}
+game_level <- OG_RegSeasonStat
+
+
+#summary(game_level)
+
+
+game_level$GameIDW <-  paste(game_level$Season, game_level$WTeamID, game_level$DayNum) #creating winning team game id
+game_level$WTeamID <- paste(game_level$Season, game_level$WTeamID) # Replacing winning team ID with team level id from previous processing
+game_level$GameIDL <-  paste(game_level$Season, game_level$LTeamID, game_level$DayNum) # creating losing team id from previous processing 
+game_level$LTeamID <- paste(game_level$Season, game_level$LTeamID) # Replacing losing team ID with team level id from previous processing
+
+```
+
+```{r :: Unique game IDs list }
+game_level_games <-  as.data.frame(unique(c(game_level$GameIDW, game_level$GameIDL)))
+
+colnames(game_level_games)[1] <- "GameID"
+```
+
+```{r :: Winning team game log}
+game_level_pros <-  game_level
+
+
+a_game_pros <-  game_level_pros[,-36] # a <- winning team game data
+a_game_pros$Score_diff <-  a_game_pros$WScore - a_game_pros$LScore # Creating score diff, will need to remove in the xg model
+r_game_w_clean <- function(x){colnames(x) <- gsub("W","R", colnames(x)); x} # Row team game stats
+o_game_w_clean <- function(x){colnames(x) <- gsub("L","O", colnames(x)); x} # Opponent game stats
+
+a_game_pros <- r_game_w_clean(a_game_pros)
+a_game_pros <- o_game_w_clean(a_game_pros)
+
+colnames(a_game_pros)[7] <- "WLoc"
+```
+
+```{r :: Losing team game log}
+
+b_game_pros <-  game_level_pros[,-35] # a <- losing team game data
+b_game_pros$Score_diff <-  b_game_pros$LScore - b_game_pros$WScore # Creating score diff, will need to remove in the xg model
+r_game_l_clean <- function(x){colnames(x) <- gsub("L","R", colnames(x)); x} # Row team game stats
+o_game_l_clean <- function(x){colnames(x) <- gsub("W","O", colnames(x)); x} # Opponent game stats
+
+b_game_pros <- r_game_l_clean(b_game_pros)
+b_game_pros <- o_game_l_clean(b_game_pros)
+
+colnames(b_game_pros)[7] <- "WLoc"
+```
+
+```{r :: reorder all columns}
+# Reorder the columns 
+colnames(a_game_pros)
+colnames(b_game_pros)
+
+col_order <-  c("GameIDR", "RTeamID", "RScore", "RFGM", "RFGA", "RFGM3", "RFGA3", "RFTM", "RFTA", "ROR", "RDR", "RAst", "RTO", "RStl", "RBlk", "RPF","OTeamID","OScore", "OFGM", "OFGA", "OFGM3", "OFGA3", "OFTM", "OFTA", "OOR", "ODR", "OAst", "OTO", "OStl", "OBlk", "OPF", "Season", "DayNum","WLoc","NumOT", "Score_diff")
+
+a_game_pros <- a_game_pros[,col_order]
+b_game_pros <- b_game_pros[,col_order]
+```
+
+
+```{r :: Combining the game level}
+
+game_level_all <-  rbind(a_game_pros, b_game_pros)
+
+game_level_all$Win <- as.numeric(game_level_all$Score_diff > 0)
+game_level_all$Loss <- as.numeric(game_level_all$Score_diff < 0)
+game_level_all$Tie <- as.numeric(game_level_all$Score_diff == 0)
+
+sum(game_level_all$Tie)
+
+
+```
+
+
+```{r}
+save(Team_Table_NET_AP, file = "Team_Season_Kaggle_2021") # Saving the final team Season Data
+#save(teams, file = "Unique_Team_Names") # Saving the unique teams season ids
+#save(game_level_all, file = "OG_game_lvl_data") #  Saving all game level data nor using XGboost ready frame
+#save(game_level_games, file = "Unique_game_lvl_names") # Unique game names
+```
+
+
+
+
+# When everything is resaved use these loads
+# ```{r :: Load in rda files from drop box}
+# 
+# load(url("https://www.dropbox.com/s/ngm0dijb1q7im89/OG_game_lvl_data?dl=1"))
+# load(url("https://www.dropbox.com/s/09gkehk7h2vp02w/Team_Season_Data?dl=1"))
+# load(url("https://www.dropbox.com/s/2bpjotutyxaszc1/Unique_game_lvl_names?dl=1"))
+# load(url("https://www.dropbox.com/s/fh65tumja7bdt0e/Unique_Team_Names?dl=1"))
+# ```
+
+
+```{r :: Creating XGboost data frame for first run }
+
+team_row <- as.data.frame(game_level_all[,1:2])
+
+team_op <- as.data.frame(game_level_all[,c("GameIDR","OTeamID")])
+
+```
+
+```{r}
+colnames(Team_Table_NET_AP)[20] <- "X2pt_3pt_ratio"
+```
+
+```{r}
+res <- as.data.frame(NA, nrow = nrow(team_row), ncol = ncol(30))
+
+pb <- txtProgressBar(min = 0, max = nrow(team_row), style = 3)
+
+for (i in 1:nrow(team_row)) {
+    Sys.sleep(0.01)
+   # I need to see progress
+   setTxtProgressBar(pb, i)
+  temp <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == team_row$RTeamID[i],]
+  res[i,1] <- team_row$GameIDR[i]
+  res[i,2] <- team_row$RTeamID[i]
+  res[i,3] <- temp$FG_Prec[nrow(temp)]
+  res[i,4] <- temp$Avg_Score[nrow(temp)]
+  res[i,5] <- temp$AVG_OT[nrow(temp)]
+  res[i,6] <- temp$Avg_FGA[nrow(temp)]
+  res[i,7] <- temp$FG3_Prec[nrow(temp)]
+  res[i,8] <- temp$Avg_FGA3[nrow(temp)]
+  res[i,9] <- temp$FT_Prec[nrow(temp)]
+  res[i,10] <- temp$AVG_FTA[nrow(temp)]
+  res[i,11] <- temp$AVG_OR[nrow(temp)]
+  res[i,12] <- temp$AVG_DR[nrow(temp)]
+  res[i,13] <- temp$AVG_AST[nrow(temp)]
+  res[i,14] <- temp$ACG_TO[nrow(temp)]
+  res[i,15] <- temp$AvG_Stl[nrow(temp)]
+  res[i,16] <- temp$AVG_Blk[nrow(temp)]
+  res[i,17] <- temp$AVG_PF[nrow(temp)]
+  res[i,18] <- temp$AVG_Scor_Diff[nrow(temp)]
+  res[i,19] <- temp$X2pt_3pt_ratio[nrow(temp)]
+  res[i,20] <- temp$Avg_Rank[nrow(temp)]
+  res[i,21] <- temp$Best_Rank[nrow(temp)]
+  res[i,22] <- temp$Final_NET_Rank[nrow(temp)]
+  res[i,23] <- temp$Final_AP_Rank[nrow(temp)]
+  res[i,24] <- temp$Worst_AP_Rank[nrow(temp)]
+}
+close(pb)
+
+team_row_all <- res
+
+colnames(Team_Table_NET_AP)
+
+names(team_row_all) <- c("GameIDR", "RTeamID","RFG_Prec","RAvg_Score","RAVG_OT","RAvg_FGA",  "RFG3_Prec","RAvg_FGA3","RFT_Prec","RAVG_FTA","RAVG_OR","RAVG_DR","RAVG_AST","RAvG_TO","RAvG_Stl","RAVG_Blk","RAVG_PF","RAVG_Scor_Diff","RX2pt_3pt_ratio","RAvg_Rank","RBest_Rank","RFinal_NET_Rank","RFinal_AP_Rank","RWorst_AP_Rank")
+```
+
+```{r}
+res <- as.data.frame(NA, nrow = nrow(team_op), ncol = ncol(30))
+
+pb <- txtProgressBar(min = 0, max = nrow(team_op), style = 3)
+
+for (i in 1:nrow(team_op)) {
+  
+   # I need to see progress
+   setTxtProgressBar(pb, i)
+  temp <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == team_op$OTeamID[i],]
+  res[i,1] <- team_op$GameIDR[i]
+  res[i,2] <- team_op$OTeamID[i]
+  res[i,3] <- temp$FG_Prec[nrow(temp)]
+  res[i,4] <- temp$Avg_Score[nrow(temp)]
+  res[i,5] <- temp$AVG_OT[nrow(temp)]
+  res[i,6] <- temp$Avg_FGA[nrow(temp)]
+  res[i,7] <- temp$FG3_Prec[nrow(temp)]
+  res[i,8] <- temp$Avg_FGA3[nrow(temp)]
+  res[i,9] <- temp$FT_Prec[nrow(temp)]
+  res[i,10] <- temp$AVG_FTA[nrow(temp)]
+  res[i,11] <- temp$AVG_OR[nrow(temp)]
+  res[i,12] <- temp$AVG_DR[nrow(temp)]
+  res[i,13] <- temp$AVG_AST[nrow(temp)]
+  res[i,14] <- temp$ACG_TO[nrow(temp)]
+  res[i,15] <- temp$AvG_Stl[nrow(temp)]
+  res[i,16] <- temp$AVG_Blk[nrow(temp)]
+  res[i,17] <- temp$AVG_PF[nrow(temp)]
+  res[i,18] <- temp$AVG_Scor_Diff[nrow(temp)]
+  res[i,19] <- temp$X2pt_3pt_ratio[nrow(temp)]
+  res[i,20] <- temp$Avg_Rank[nrow(temp)]
+  res[i,21] <- temp$Best_Rank[nrow(temp)]
+  res[i,22] <- temp$Final_NET_Rank[nrow(temp)]
+  res[i,23] <- temp$Final_AP_Rank[nrow(temp)]
+  res[i,24] <- temp$Worst_AP_Rank[nrow(temp)]
+}
+close(pb)
+
+team_opp_all <- res
+
+names(team_opp_all) <- c("GameIDR", "OTeamID","OFG_Prec","OAvg_Score","OAVG_OT","OAvg_FGA",  "OFG3_Prec","OAvg_FGA3","OFT_Prec","OAVG_FTA","OAVG_OR","OAVG_DR","RAVG_AST","OAvG_TO","OAvG_Stl","OAVG_Blk","OAVG_PF","OAVG_Scor_Diff","OX2pt_3pt_ratio","OAvg_Rank","OBest_Rank","OFinal_NET_Rank","OFinal_AP_Rank","OWorst_AP_Rank")
+
+```
+
+```{r}
+Game_full <-  cbind(team_row_all,team_opp_all)
+
+colnames(Game_full)[25] <- "GameIDR2" 
+
+sum(Game_full$GameIDR == Game_full$GameIDR2)
+
+Game_full <-  cbind(Game_full, game_level_all[,c(37,38)])
+
+save(Game_full, file = "Kaggle_game_stats")
+
+```
+
+
+
+### If Rerunning you should be able to start here
+# Final game level stats for initital XGBoost
+```{r :: Safe spot to start code for modeling if editing model results or year prediction}
+#load(url("https://www.dropbox.com/s/8zqshqwnvnzqkb9/Game_lvl_svg_stats?dl=1"))
+load("Kaggle_game_stats")
+
+
+Game_full$RWorst_AP_Rank[is.na(Game_full$RWorst_AP_Rank)] <- max(Game_full$RWorst_AP_Rank, na.rm = TRUE) + 1
+
+Game_full$OWorst_AP_Rank[is.na(Game_full$OWorst_AP_Rank)] <- max(Game_full$OWorst_AP_Rank, na.rm = TRUE) + 1
+
+
+Game_full$Rank_Diff_AVG <- Game_full$RAvg_Rank - Game_full$OAvg_Rank
+Game_full$Rank_Diff_Best_Rank <- Game_full$RBest_Rank - Game_full$OBest_Rank
+Game_full$Rank_Diff_Final_NET_Rank <- Game_full$RFinal_NET_Rank - Game_full$OFinal_NET_Rank
+Game_full$Rank_Diff_Final_AP_Rank <- Game_full$RFinal_AP_Rank - Game_full$OFinal_AP_Rank
+Game_full$Rank_Diff_Worst_AP_Rank <- Game_full$RWorst_AP_Rank - Game_full$OWorst_AP_Rank
+
+Game_full$Rank
+
+
+Game_full <- Game_full[,c(1:47,49:53,48)]
+
+
+
+# Game_full is now pre processed for XGBoost
+```
+
+
+
+# Begininig Strat spilt for the 
+## Possible codes
+```{r :: Restrat and make sets for XGBoost}
+Game_fullXG <- Game_full
+
+Game_fullXG$RFinal_NET_Rank[is.na(Game_fullXG$RFinal_NET_Rank)] <- max(Game_fullXG$RFinal_NET_Rank, na.rm = TRUE) + 1
+
+Game_fullXG$RFinal_AP_Rank[is.na(Game_fullXG$RFinal_AP_Rank)] <-  max(Game_fullXG$RFinal_AP_Rank, na.rm = TRUE) + 1
+
+Game_fullXG$OFinal_NET_Rank[is.na(Game_fullXG$OFinal_NET_Rank)] <- max(Game_fullXG$OFinal_NET_Rank, na.rm = TRUE) + 1
+
+Game_fullXG$OFinal_AP_Rank[is.na(Game_fullXG$OFinal_AP_Rank)] <-  max(Game_fullXG$OFinal_AP_Rank, na.rm = TRUE) + 1
+set.seed(1984)
+
+Game_fullXG$Rank_Diff_Final_NET_Rank[is.na(Game_fullXG$Rank_Diff_Final_NET_Rank)] <-  0
+
+names(Game_fullXG)[37] <-  "OAVG_AST" # This needs to be moved to preprocessing portion
+
+split <-  stratified(Game_fullXG, c('Win'), .80, bothSets = TRUE)
+train_strat <- split[[1]]
+test_strat <- split[[2]]
+
+```
+
+```{r :: Creating XGMatrix }
+Gtrain <- xgb.DMatrix(data = as.matrix(train_strat[,c(3:24, 27:47)]), label = as.numeric(train_strat$Win))
+# Create test matrix
+Gtest <- xgb.DMatrix(data = as.matrix(test_strat[,c(3:24, 27:47)]), label = as.numeric(test_strat$Win))
+
+```
+
+```{r :: Light XG Model}
+set.seed(1984)
+Gamebeast <- xgboost(data = Gtrain, 
+               eta = .3,
+               nrounds = 1000, 
+               nthread = 4, 
+               verbose = 1, 
+               print_every_n = 20,
+               
+               objective = "binary:logistic", # Set objective
+               eval_metric = "auc",
+               eval_metric = "error")
+
+
+
+xgb.save(Gamebeast, "Kaggle1_xgmodel") ## This can also save an rda 
+```
+
+```{r :: Light XG Results}
+Gamebeast <- xgb.load("Kaggle1_xgmodel")
+boost_preds <- predict(Gamebeast, Gtrain) # Create predictions for xgboost model
+# Join predictions and actual
+pred_dat <- cbind.data.frame(boost_preds , train_strat$Win)
+names(pred_dat) <- c("predictions", "response")
+
+
+boost_preds_1 <- predict(Gamebeast, Gtest) # Create predictions for xgboost model
+
+## pred_dat <- cbind.data.frame(boost_preds_1 , test_data$class)#obselite now.
+# Convert predictions to classes, using optimal cut-off
+boost_pred_class <- rep(0, length(boost_preds_1))
+boost_pred_class[boost_preds_1 >= .5] <- 1
+
+
+SmallXGBoost <- table(boost_pred_class, test_strat$Win) # Create table
+confusionMatrix(SmallXGBoost, positive = "1")
+
+
+# .6897 accuracy
+```
+
+```{r}
+Tourney_seed <-  read.csv("https://www.dropbox.com/s/v7l5m7sf4uivf3f/MNCAATourneySeeds%20%281%29.csv?dl=1")
+load("Team_Season_Kaggle_2021")
+
+Tourney_seed$TeamID_Year <-  paste(Tourney_seed$Season, Tourney_seed$TeamID)
+
+Tourney_seed <- Tourney_seed[Tourney_seed$Season==2021,-3]
+```
+
+```{r}
+colnames(Team_Table_NET_AP)[13] <- "AvG_TO"
+W11a <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "W11a"],]
+
+names(W11a) <- paste("R", names(W11a), sep = "")
+  
+W11b <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "W11b"],]
+
+names(W11b) <- paste("O", names(W11b), sep = "")
+
+
+W11 <-  cbind(W11a, W11b)
+
+W11_dat <- xgb.DMatrix(data = as.matrix(W11[, names(test_strat)[c(3:24, 27:47)]]))
+W11_pred <-  predict(Gamebeast, W11_dat)
+W11_pred > .5
+#W11b
+
+# W16 prediction hard code
+
+W16a <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "W16a"],]
+
+names(W16a) <- paste("R", names(W16a), sep = "")
+  
+W16b <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "W16b"],]
+
+names(W16b) <- paste("O", names(W16b), sep = "")
+
+
+W16 <-  cbind(W16a, W16b)
+
+W16_dat <- xgb.DMatrix(data = as.matrix(W16[, names(train_strat)[c(3:24, 27:47)]]))
+W16_pred <-  predict(Gamebeast, W16_dat)
+W16_pred > .5
+# W16a is the winner
+
+
+# X11 prediction
+
+X11a <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "X11a"],]
+
+names(X11a) <- paste("R", names(X11a), sep = "")
+  
+X11b <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "X11b"],]
+
+names(X11b) <- paste("O", names(X11b), sep = "")
+
+
+X11 <-  cbind(X11a, X11b)
+
+X11_dat <- xgb.DMatrix(data = as.matrix(X11[, names(test_strat)[c(3:24, 27:47)]]))
+X11_pred <-  predict(Gamebeast, X11_dat)
+X11_pred > .5
+# X11a is predicted to win
+
+#X16 seed prediction. 
+ 
+X16a <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "X16a"],]
+
+names(X16a) <- paste("R", names(X16a), sep = "")
+  
+X16b <- Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == Tourney_seed$TeamID_Year[Tourney_seed$Seed == "X16b"],]
+
+names(X16b) <- paste("O", names(X16b), sep = "")
+
+
+X16 <-  cbind(X16a, X16b)
+
+X16_dat <- xgb.DMatrix(data = as.matrix(X16[, names(test_strat)[c(3:24, 27:47)]]))
+X16_pred <-  predict(Gamebeast, X16_dat)
+X16_pred > .5
+# X16a is predicted winner
+
+```
+
+# Stop here
+```{r :: Create the tournament for 2021}
+# Change Values to most recent data and 2021
+
+Tourney <- read.csv("https://www.dropbox.com/s/zhb810pe94bd8ik/Tourney_base_table?dl=1")
+
+Tourney_seed_2021 <-  Tourney_seed[!(Tourney_seed$Seed == 'W11a' | Tourney_seed$Seed == 'W16b' | Tourney_seed$Seed == "X11b" | Tourney_seed$Seed == "X16b"),]
+
+Tourney_seed_2021$Seed <- gsub("a", "", Tourney_seed_2021$Seed)
+Tourney_seed_2021$Seed <- gsub("b", "", Tourney_seed_2021$Seed)
+
+
+Tourney_seed1 <-  merge(Tourney_seed_2021, Tourney, by.x = "Seed", by.y = "Seed", all.y = TRUE)
+
+Tourney_seed1 <-  Tourney_seed1[,-4]
+
+Tourn_2021_64 <-  Tourney_seed1
+
+save(Tourn_2021_64, file = "Kaggle_Tourney_2021_64")
+
+
+```
+
+# Load Tourn_base for future forecast.
