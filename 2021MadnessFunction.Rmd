@@ -1,0 +1,447 @@
+---
+title: "Function prep"
+author: "Benjamin Siglow"
+date: "2/6/2021"
+output: html_document
+---
+
+```{r :: Load packages}
+library(devtools)
+library(xgboostExplainer)
+library(tidyverse)
+library(ggdark)
+library(rattle)	
+library(RColorBrewer)
+library(randomForest)
+library(caTools)
+library(caret)
+library(rpart)
+library(splitstackshape)
+library(xgboost)
+library(Metrics)
+library(pROC)
+library(SHAPforxgboost)
+library(xgboostExplainer)
+library(OptimalCutpoints)
+
+```
+
+
+```{r :: Load in files}
+setwd("C://Users//Ben Siglow//Documents//Martin RA//March Madness//March-Madness-Comp")
+Tourney_base <- read.csv("https://www.dropbox.com/s/zhb810pe94bd8ik/Tourney_base_table?dl=1")
+load("Kaggle_Tourney_2021_64")
+load("Team_Season_Kaggle_2021")
+Gamebeast <- xgb.load("Kaggle1_xgmodel")
+
+```
+
+```{r}
+colnames(Team_Table_NET_AP)[13] <- "AvG_TO"
+```
+
+
+```{r :: bind Tourney_base and Tourney seeds from data}
+# think about re-creating xg model with final rank diff
+
+```
+
+```{r :: Function to predict play in games}
+
+```
+
+```{r :: Tata edit}
+TM <- Tourn_2021_64[,1:10]
+Tourn_2021_64 <-  TM # need to resave the file to remove the results columns, fixing here for testing.
+```
+
+```{r :: colnames}
+names <- c("RFG_Prec","RAvg_Score","RAVG_OT","RAvg_FGA","RFG3_Prec","RAvg_FGA3"   ,"RFT_Prec","RAVG_FTA","RAVG_OR","RAVG_DR","RAVG_AST","RAvG_TO","RAvG_Stl",        "RAVG_Blk","RAVG_PF","RAVG_Scor_Diff","RX2pt_3pt_ratio","RAvg_Rank","RBest_Rank",      "RFinal_NET_Rank","RFinal_AP_Rank","RWorst_AP_Rank","OFG_Prec","OAvg_Score","OAVG_OT",         "OAvg_FGA", "OFG3_Prec","OAvg_FGA3","OFT_Prec","OAVG_FTA","OAVG_OR",         "OAVG_DR","OAVG_AST","OAvG_TO","OAvG_Stl","OAVG_Blk","OAVG_PF","OAVG_Scor_Diff",  "OX2pt_3pt_ratio", "OAvg_Rank","OBest_Rank","OFinal_NET_Rank","OFinal_AP_Rank" )
+
+```
+
+
+
+### Review Function
+
+```{r :: Tourney function}
+Tourn_sim <- function(Tourn_2021_64,Team_Table_NET_AP,Gamebeast, names)
+{
+  ######### Game 1 predictions for Round 2 competition ##################################################################################################################################################################################
+  
+round2 <-  rep(NA, 64)
+
+
+for (i in 1:64){
+  teams <-  Tourn_2021_64$TeamID_Year[which(Tourn_2021_64$Game == i)]
+  stats1 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[1],]
+  stats2 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[2],] # How do yu determine the opponent ?
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  # recreat rank diffs in a stats 1 - stats 2
+  # Only feed in original XGboost model to create 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round2[which(Tourn_2021_64$TeamID_Year == teams[2])] <-  Tourn_2021_64$Game2[which(Tourn_2021_64$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }else{
+    round2[which(Tourn_2021_64$TeamID_Year == teams[1])] <- Tourn_2021_64$Game2[which(Tourn_2021_64$TeamID_Year == teams[1])]
+  }
+}
+
+#sum(!(is.na(round2)))
+Tourn_2021_64 <- cbind(Tourn_2021_64, round2)
+
+round3 <-  rep(NA, 64)
+
+
+for (i in 1:32){
+  teams <-  Tourn_2021_64$TeamID_Year[which(Tourn_2021_64$round2 == i)]
+  stats1 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[1],]
+  stats2 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[2],] # How do yu determine the opponent ?
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  # recreat rank diffs in a stats 1 - stats 2
+  # Only feed in original XGboost model to create 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round3[which(Tourn_2021_64$TeamID_Year == teams[2])] <-  Tourn_2021_64$Game3[which(Tourn_2021_64$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }else{
+    round3[which(Tourn_2021_64$TeamID_Year == teams[1])] <- Tourn_2021_64$Game3[which(Tourn_2021_64$TeamID_Year == teams[1])]
+  }
+}
+
+#sum(!(is.na(round3)))
+Tourn_2021_64 <- cbind(Tourn_2021_64, round3)
+
+round4 <-  rep(NA, 64)
+
+
+for (i in 1:16){
+  teams <-  Tourn_2021_64$TeamID_Year[which(Tourn_2021_64$round3 == i)]
+  stats1 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[1],]
+  stats2 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[2],] # How do yu determine the opponent ?
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  # recreat rank diffs in a stats 1 - stats 2
+  # Only feed in original XGboost model to create 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round4[which(Tourn_2021_64$TeamID_Year == teams[2])] <-  Tourn_2021_64$Game4[which(Tourn_2021_64$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }else{
+    round4[which(Tourn_2021_64$TeamID_Year == teams[1])] <- Tourn_2021_64$Game4[which(Tourn_2021_64$TeamID_Year == teams[1])]
+  }
+}
+
+#sum(!(is.na(round4)))
+Tourn_2021_64 <- cbind(Tourn_2021_64, round4)
+
+
+round5 <-  rep(NA, 64)
+
+
+for (i in 1:8){
+  teams <-  Tourn_2021_64$TeamID_Year[which(Tourn_2021_64$round4 == i)]
+  stats1 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[1],]
+  stats2 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[2],] # How do yu determine the opponent ?
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  # recreat rank diffs in a stats 1 - stats 2
+  # Only feed in original XGboost model to create 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round5[which(Tourn_2021_64$TeamID_Year == teams[2])] <-  Tourn_2021_64$Game5[which(Tourn_2021_64$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }else{
+    round5[which(Tourn_2021_64$TeamID_Year == teams[1])] <- Tourn_2021_64$Game5[which(Tourn_2021_64$TeamID_Year == teams[1])]
+  }
+}
+
+#sum(!(is.na(round5)))
+Tourn_2021_64 <- cbind(Tourn_2021_64, round5)
+
+round6 <-  rep(NA, 64)
+
+
+for (i in 1:4){
+  teams <-  Tourn_2021_64$TeamID_Year[which(Tourn_2021_64$round5 == i)]
+  stats1 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[1],]
+  stats2 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[2],] # How do yu determine the opponent ?
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  # recreat rank diffs in a stats 1 - stats 2
+  # Only feed in original XGboost model to create 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round6[which(Tourn_2021_64$TeamID_Year == teams[2])] <-  Tourn_2021_64$Game6[which(Tourn_2021_64$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }else{
+    round6[which(Tourn_2021_64$TeamID_Year == teams[1])] <- Tourn_2021_64$Game6[which(Tourn_2021_64$TeamID_Year == teams[1])]
+  }
+}
+
+#sum(!(is.na(round6)))
+Tourn_2021_64 <- cbind(Tourn_2021_64, round6)
+
+champ <-  rep(NA, 64)
+
+
+for (i in 1:2){
+  teams <-  Tourn_2021_64$TeamID_Year[which(Tourn_2021_64$round6 == i)]
+  stats1 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[1],]
+  stats2 <-  Team_Table_NET_AP[Team_Table_NET_AP$TeamID_Year == teams[2],] # How do yu determine the opponent ?
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  # recreat rank diffs in a stats 1 - stats 2
+  # Only feed in original XGboost model to create 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    champ[which(Tourn_2021_64$TeamID_Year == teams[2])] <-  Tourn_2021_64$Game6[which(Tourn_2021_64$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }else{
+    champ[which(Tourn_2021_64$TeamID_Year == teams[1])] <- Tourn_2021_64$Game6[which(Tourn_2021_64$TeamID_Year == teams[1])]
+  }
+}
+
+#sum(!(is.na(champ)))
+Tourn_2021_64 <- cbind(Tourn_2021_64, champ)
+return(Tourn_2021_64)
+
+}
+```
+
+```{r :: Re_run sim 100 times, echo = FALSE}
+
+Final_four <- rep(NA, 64)
+# For 1 to 10,000
+for(x in 1:5){
+  # Set seed for reproducability
+  set.seed(x)
+  # Simulate tournament
+  temp <- Tourn_sim(Tourn_2021_64 = Tourn_2021_64, Team_Table_NET_AP = Team_Table_NET_AP, Gamebeast = Gamebeast, names = names)
+  # Extract tournament winner
+  Final_four[x] <- temp$TeamID_Year[which(!is.na(temp$round5))]
+}
+
+final_four_count <- as.data.frame(table(Final_four))
+# Print out tabulated results
+final_four_count
+
+# This does not pull the championship game. 
+
+
+```
+
+
+
+```{r}
+sim_res <-  vector(mode = "list", length = 100)
+
+winner <- rep(NA, 100)
+# For 1 to 10,000
+
+pb <- txtProgressBar(min = 0, max = 100, style = 3)
+
+for(x in 1:100){
+  
+  #Sys.sleep(0.01) # remove this to save time.
+   # I need to see progress
+   setTxtProgressBar(pb, x)
+  # Set seed for reproducability
+  set.seed(x)
+  # Simulate tournament
+  temp <- Tourn_sim(Tourn_2021_64 = Tourn_2021_64, Team_Table_NET_AP = Team_Table_NET_AP, Gamebeast = Gamebeast, names = names)
+  # Extract tournament winner
+  winner[x] <- temp$TeamID_Year[which(temp$champ == 1)]
+  sim_res[[x]] <-  temp
+}
+close(pb)
+
+champ_count <- as.data.frame(table(winner))
+# Print out tabulated results
+champ_count
+```
+
+
+```{r}
+# Trying to make a loop to get a count of every time each team makes it to each round.
+# just do this with rbind
+
+
+
+Tourney_projections <- as.data.frame(do.call("rbind", sim_res))
+
+
+Tourney_projections[,11:16][!is.na(Tourney_projections[,11:16])] <- 1
+Tourney_projections[,11:16][is.na(Tourney_projections[,11:16])] <- 0
+Tourney_projections <- Tourney_projections[,c(1:4,11:16)]
+Tourney_projections$round1 <- 1
+Tourney_projections <- Tourney_projections[,c(1:4,11,5:10)]
+
+teams <- as.data.frame(unique(Tourney_projections[,3]))
+colnames(teams)[1] <- "TeamID_Year"
+
+teams$Seed <- NA
+teams$Round1 <- NA
+teams$Round2 <- NA
+teams$Round3 <- NA
+teams$Round4 <- NA
+teams$Round5 <- NA
+teams$Round6 <- NA
+teams$Champion <- NA
+
+
+
+for(i in 1:nrow(teams)){
+  temp <- Tourney_projections[Tourney_projections$TeamID_Year == teams$TeamID_Year[i],]
+  
+  teams[i,2] <- temp$Seed[nrow(temp)]
+  teams[i,3] <- sum(temp$round1)
+  teams[i,4] <- sum(temp$round2)
+  teams[i,5] <- sum(temp$round3)
+  teams[i,6] <- sum(temp$round4)
+  teams[i,7] <- sum(temp$round5)
+  teams[i,8] <- sum(temp$round6)
+  teams[i,9] <- sum(temp$champ)
+}
+
+## Match the individual names of teams and count results after removing game values and replacing the number values in rounds to 1 and 0 then create round 1 - championship counts with table call we used in champ count. 
+
+```
+
+```{r}
+tourn_route <- read.csv("https://www.dropbox.com/s/zhb810pe94bd8ik/Tourney_base_table?dl=1")
+
+tourn_result <-  merge(tourn_route, teams, by.x = "Seed", by.y = "Seed", all.y = TRUE)
+
+tourn_result <- tourn_result[,-c(2,3)]
+```
+
+```{r}
+Team_names <- read.csv("https://www.dropbox.com/s/2mabrsebsh9p227/MTeams.csv?dl=1")
+
+Final_Projection <- teams
+
+Final_Projection$TeamID <- substr(Final_Projection$TeamID_Year,6,9)
+Final_Projection <- merge(Final_Projection, Team_names[,1:2],by.x = "TeamID",by.y = "TeamID", all.x = TRUE)
+
+
+```
+
+
+
+### Function for count result
+
+```{r}
+Tourn_function <-  function(tourn_result)
+{
+
+# Revert back to havingg half empty data frame of outcome 8:15
+# Revert back to "W" and "L" based on stat differnce and add value to the table
+# In the Round 3 results after the first team call do team[team == Outcome$TeamID_Year[Outcome$Round2 == "W"]]
+    
+Outcome <- tourn_result[,8:15] 
+   
+#Round2 <- rep(NA,64)
+
+
+for (i in 1:32){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game == i)]
+  stats1 <-  tourn_result$Round2[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Round2[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Round2[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Round2[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Round2[which(tourn_result$TeamID_Year == team[1])] <-  "w"
+    Outcome$Round2[which(tourn_result$TeamID_Year == team[2])] <- "L"
+  }
+  Outcome <- cbind(Outcome, Round2)
+}
+# Need to add method the give win to higher IF sTAT1 == sTAT2
+for (i in 1:16){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game == i)]
+  stats1 <-  tourn_result$Round3[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Round3[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Round3[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Round3[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Round3[which(tourn_result$TeamID_Year == team[1])] <-  "w"
+    Outcome$Round3[which(tourn_result$TeamID_Year == team[2])] <- "L"
+    }
+  Outcome <- cbind(Outcome, Round3)
+}
+}
+
+
+  
+```
+
+
+```{r, echo = FALSE}
+sim_res[[1]]$TeamID_Year[1][nrow = 1]
+sum(!is.na(sim_res[[1]]$round2[1]))
+```
+
+```{r, echo = FALSE}
+count(!is.na(sim_res[[5]]$round3[sim_res[[5]]$TeamID_Year == "2017 1437"]))
+```
+
+```{r, echo = FALSE}
+winner <- rep(NA, 100)
+# For 1 to 10,000
+
+pb <- txtProgressBar(min = 0, max = 100, style = 3)
+
+for(x in 1:100){
+  
+  Sys.sleep(0.01) # remove this to save time.
+   # I need to see progress
+   setTxtProgressBar(pb, x)
+  # Set seed for reproducability
+  set.seed(x)
+  # Simulate tournament
+  temp <- Tourn_sim(Tourn_2021_64 = Tourn_2021_64, Team_Table_NET_AP = Team_Table_NET_AP, Gamebeast = Gamebeast, names = names)
+  # Extract tournament winner
+  winner[x] <- temp$TeamID_Year[which(temp$champ == 1)]
+}
+close(pb)
+
+champ_count <- as.data.frame(table(winner))
+# Print out tabulated results
+champ_count
+
+
+# In 100 iterations the the only winner shown was Villinova which is concerning for the loop. 
+```
+
+
