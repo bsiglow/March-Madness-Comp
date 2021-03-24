@@ -1,0 +1,440 @@
+---
+title: "Function prep"
+author: "Benjamin Siglow"
+date: "2/6/2021"
+output: html_document
+---
+
+```{r :: Load packages}
+library(devtools)
+library(xgboostExplainer)
+library(tidyverse)
+library(ggdark)
+library(rattle)	
+library(RColorBrewer)
+library(randomForest)
+library(caTools)
+library(caret)
+library(rpart)
+library(splitstackshape)
+library(xgboost)
+library(Metrics)
+library(pROC)
+library(SHAPforxgboost)
+library(xgboostExplainer)
+library(OptimalCutpoints)
+
+```
+
+
+```{r :: Load in files}
+setwd("C://Users//Ben Siglow//Documents//Martin RA//March Madness//March-Madness-Comp") # Set local fo the xgb. model built in previous code.
+Tourney_base <- read.csv("https://www.dropbox.com/s/zhb810pe94bd8ik/Tourney_base_table?dl=1") # Tourney design.
+load(url("https://www.dropbox.com/s/jk3kfm9irxawt90/Tourney_2017_stats?dl=1")) # Required Data
+load(url("https://www.dropbox.com/s/jr2hvn018s9df8j/Tourney_2017_64?dl=1")) # Required data
+Gamebeast <-  xgb.load("small_test_xgmodel") # Small model build , extra tuning is possible
+
+```
+
+
+```{r :: Tata edit}
+TM <- Tourn_2017_64[,1:9]
+Tourn_2017_64 <-  TM # need to resave the file to remove the results columns, fixing here for testing.
+```
+
+```{r :: colnames}
+names <- c("RFG_Prec","RAvg_Score","RAVG_OT","RAvg_FGA","RFG3_Prec","RAvg_FGA3"   ,"RFT_Prec","RAVG_FTA","RAVG_OR","RAVG_DR","RAVG_AST","RAvG_TO","RAvG_Stl",        "RAVG_Blk","RAVG_PF","RAVG_Scor_Diff","RX2pt_3pt_ratio","RAvg_Rank","RBest_Rank",      "RFinal_NET_Rank","RFinal_AP_Rank","RWorst_AP_Rank","OFG_Prec","OAvg_Score","OAVG_OT",         "OAvg_FGA", "OFG3_Prec","OAvg_FGA3","OFT_Prec","OAVG_FTA","OAVG_OR",         "OAVG_DR","OAVG_AST","OAvG_TO","OAvG_Stl","OAVG_Blk","OAVG_PF","OAVG_Scor_Diff",  "OX2pt_3pt_ratio", "OAvg_Rank","OBest_Rank","OFinal_NET_Rank","OFinal_AP_Rank" )
+# Names created so all following data sets will include names.
+```
+
+
+
+### Review Function
+
+```{r :: Tourney function}
+Tourn_sim <- function(Tourn_2017_64,Tourn_2017_stats,Gamebeast, names)
+{ ### Input: You are loading in:
+    #Tourn_2017_64: This is the tourney design created in the previous code
+    #Tourn_2017_stats: This is all the stats so this can be edited to the material you prefer, but processing will be needed on play in games for different years, this is based on 2017
+    #Gamebeast: This is a siple save and load of the boost created.
+    # names: created above so the columns will work.
+  
+  ######### Game 1 predictions for Round 2 competition ##################################################################################################################################################################################
+  
+round2 <-  rep(NA, 64)
+
+
+for (i in 1:64){
+  teams <-  Tourn_2017_64$TeamID_Year[which(Tourn_2017_64$Game == i)]# Pulling in the team name to a list to create row team and oponenet team
+  stats1 <-  Tourn_2017_stats[Tourn_2017_stats$TeamID_Year == teams[1],] # Team 1 stats. 
+  stats2 <-  Tourn_2017_stats[Tourn_2017_stats$TeamID_Year == teams[2],] # Team 2 stats.
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  # Creating names to allow our model to work.
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  # Creating names to allow our model to work. 
+  temp_data <-  cbind.data.frame(stats1, stats2) # Binding data for the XGboost.
+  
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names])) # XGboost run.
+  
+  pred <-  predict(Gamebeast, temp_data2) # Predictions created from XG run.
+  
+  sim <- runif(1, min = 0, max = 1) # Simminig a random number to have the resulting info. 
+  
+  # Below if statement allows the runs to continue forward and format the next round to be used in the following cases. 
+  if (pred < sim){
+    round2[which(Tourn_2017_64$TeamID_Year == teams[2])] <-  Tourn_2017_64$Game2[which(Tourn_2017_64$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }
+  else{
+    round2[which(Tourn_2017_64$TeamID_Year == teams[1])] <- Tourn_2017_64$Game2[which(Tourn_2017_64$TeamID_Year == teams[1])]
+  }
+}
+
+#sum(!(is.na(round2))) spot check
+Tourn_2017_64 <- cbind(Tourn_2017_64, round2)
+
+round3 <-  rep(NA, 64)
+
+
+for (i in 1:64){
+  teams <-  Tourn_2017_64$TeamID_Year[which(Tourn_2017_64$round2 == i)]
+  stats1 <-  Tourn_2017_stats[Tourn_2017_stats$TeamID_Year == teams[1],]
+  stats2 <-  Tourn_2017_stats[Tourn_2017_stats$TeamID_Year == teams[2],] 
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+ 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round3[which(Tourn_2017_64$TeamID_Year == teams[2])] <-  Tourn_2017_64$Game3[which(Tourn_2017_64$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }
+  else{
+    round3[which(Tourn_2017_64$TeamID_Year == teams[1])] <- Tourn_2017_64$Game3[which(Tourn_2017_64$TeamID_Year == teams[1])]
+  }
+}
+
+#sum(!(is.na(round3)))
+Tourn_2017_64 <- cbind(Tourn_2017_64, round3)
+
+round4 <-  rep(NA, 64)
+
+
+for (i in 1:64){
+  teams <-  Tourn_2017_64$TeamID_Year[which(Tourn_2017_64$round3 == i)]
+  stats1 <-  Tourn_2017_stats[Tourn_2017_stats$TeamID_Year == teams[1],]
+  stats2 <-  Tourn_2017_stats[Tourn_2017_stats$TeamID_Year == teams[2],] 
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round4[which(Tourn_2017_64$TeamID_Year == teams[2])] <-  Tourn_2017_64$Game4[which(Tourn_2017_64$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }
+  else{
+    round4[which(Tourn_2017_64$TeamID_Year == teams[1])] <- Tourn_2017_64$Game4[which(Tourn_2017_64$TeamID_Year == teams[1])]
+  }
+}
+
+#sum(!(is.na(round4)))
+Tourn_2017_64 <- cbind(Tourn_2017_64, round4)
+
+
+round5 <-  rep(NA, 64)
+
+
+for (i in 1:64){
+  teams <-  Tourn_2017_64$TeamID_Year[which(Tourn_2017_64$round4 == i)]
+  stats1 <-  Tourn_2017_stats[Tourn_2017_stats$TeamID_Year == teams[1],]
+  stats2 <-  Tourn_2017_stats[Tourn_2017_stats$TeamID_Year == teams[2],] 
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+ 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round5[which(Tourn_2017_64$TeamID_Year == teams[2])] <-  Tourn_2017_64$Game5[which(Tourn_2017_64$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }
+  else{
+    round5[which(Tourn_2017_64$TeamID_Year == teams[1])] <- Tourn_2017_64$Game5[which(Tourn_2017_64$TeamID_Year == teams[1])]
+  }
+}
+
+#sum(!(is.na(round5)))
+Tourn_2017_64 <- cbind(Tourn_2017_64, round5)
+
+round6 <-  rep(NA, 64)
+
+
+for (i in 1:64){
+  teams <-  Tourn_2017_64$TeamID_Year[which(Tourn_2017_64$round5 == i)]
+  stats1 <-  Tourn_2017_stats[Tourn_2017_stats$TeamID_Year == teams[1],]
+  stats2 <-  Tourn_2017_stats[Tourn_2017_stats$TeamID_Year == teams[2],] 
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+ 
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    round6[which(Tourn_2017_64$TeamID_Year == teams[2])] <-  Tourn_2017_64$Game6[which(Tourn_2017_64$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }
+  else{
+    round6[which(Tourn_2017_64$TeamID_Year == teams[1])] <- Tourn_2017_64$Game6[which(Tourn_2017_64$TeamID_Year == teams[1])]
+  }
+}
+
+#sum(!(is.na(round6)))
+Tourn_2017_64 <- cbind(Tourn_2017_64, round6)
+
+champ <-  rep(NA, 64)
+
+
+for (i in 1:64){
+  teams <-  Tourn_2017_64$TeamID_Year[which(Tourn_2017_64$round6 == i)]
+  stats1 <-  Tourn_2017_stats[Tourn_2017_stats$TeamID_Year == teams[1],]
+  stats2 <-  Tourn_2017_stats[Tourn_2017_stats$TeamID_Year == teams[2],] 
+  names(stats1) <- paste("R", names(stats1), sep = "")
+  names(stats2) <-  paste("O", names(stats2), sep = "")
+  temp_data <-  cbind.data.frame(stats1, stats2)
+  
+  temp_data2 <- xgb.DMatrix(data = as.matrix(temp_data[, names]))
+  pred <-  predict(Gamebeast, temp_data2)
+  sim <- runif(1, min = 0, max = 1)
+  if (pred < sim){
+    champ[which(Tourn_2017_64$TeamID_Year == teams[2])] <-  Tourn_2017_64$Game6[which(Tourn_2017_64$TeamID_Year == teams[2])] # assign round 2 game to team 2 if they were to win the game
+    
+    
+  }
+  else{
+    champ[which(Tourn_2017_64$TeamID_Year == teams[1])] <- Tourn_2017_64$Game6[which(Tourn_2017_64$TeamID_Year == teams[1])]
+  }
+}
+
+#sum(!(is.na(champ)))
+Tourn_2017_64 <- cbind(Tourn_2017_64, champ)
+return(Tourn_2017_64)
+
+}
+```
+
+
+```{r :: Itterating through multiple times}
+
+# If you want more runs, and you want an accurate load bar switch the length on 241, the 101 on 243, the max on 246, and the 101 on 248. These numbers should all match. 
+sim_res <-  vector(mode = "list", length = 101)
+
+winner <- rep(NA, 101)
+# For 1 to 10,000
+
+pb <- txtProgressBar(min = 0, max = 101, style = 3)
+
+for(x in 1:101){
+  
+  
+   # I need to see progress
+   setTxtProgressBar(pb, x)
+  # Set seed for reproducability
+  set.seed(x)
+  # Simulate tournament
+  temp <- Tourn_sim(Tourn_2017_64 = Tourn_2017_64, Tourn_2017_stats = Tourn_2017_stats, Gamebeast = Gamebeast, names = names)
+  # Extract tournament winner
+  winner[x] <- temp$TeamID_Year[which(temp$champ == 1)]
+  sim_res[[x]] <-  temp
+}
+close(pb)
+
+champ_count <- as.data.frame(table(winner))
+# Print out tabulated results
+champ_count
+```
+
+
+```{r}
+# Trying to make a loop to get a count of every time each team makes it to each round.
+# just do this with rbind
+
+
+
+Tourney_projections <- as.data.frame(do.call("rbind", sim_res))
+
+
+Tourney_projections[,10:15][!is.na(Tourney_projections[,10:15])] <- 1
+Tourney_projections[,10:15][is.na(Tourney_projections[,10:15])] <- 0
+Tourney_projections <- Tourney_projections[,c(1:3,10:15)]
+Tourney_projections$round1 <- 1
+
+teams <- as.data.frame(unique(Tourney_projections[,3]))
+colnames(teams)[1] <- "TeamID_Year"
+
+teams$Round1 <- NA
+teams$Round2 <- NA
+teams$Round3 <- NA
+teams$Round4 <- NA
+teams$Round5 <- NA
+teams$Round6 <- NA
+teams$Champion <- NA
+teams$Seed <- NA
+
+
+for(i in 1:nrow(teams)){
+  temp <- Tourney_projections[Tourney_projections$TeamID_Year == teams$TeamID_Year[i],]
+  
+  teams[i,2] <- sum(temp$round1)
+  teams[i,3] <- sum(temp$round2)
+  teams[i,4] <- sum(temp$round3)
+  teams[i,5] <- sum(temp$round4)
+  teams[i,6] <- sum(temp$round5)
+  teams[i,7] <- sum(temp$round6)
+  teams[i,8] <- sum(temp$champ)
+  teams[i,9] <- temp$Seed[nrow(temp)]
+}
+
+## Match the individual names of teams and count results after removing game values and replacing the number values in rounds to 1 and 0 then create round 1 - championship counts with table call we used in champ count. 
+
+```
+
+```{r :: Brininig in seed values to run competition}
+tourn_route <- read.csv("https://www.dropbox.com/s/zhb810pe94bd8ik/Tourney_base_table?dl=1")
+
+tourn_result <-  merge(tourn_route, teams, by.x = "Seed", by.y = "Seed", all.y = TRUE)
+
+tourn_result <- tourn_result[,-c(2,3)]
+```
+
+
+
+### Function for count result
+
+```{r :: Uses counts for the basic results depictin Win, Loss, and Did not Continue}
+Tourn_function <-  function(tourn_result)
+{
+
+# Revert back to having half empty data frame of outcome 8:15
+# Revert back to "W" and "L" based on stat difference and add value to the table
+# In the Round 3 results after the first team call do team[team == Outcome$TeamID_Year[Outcome$Round2 == "W"]]
+    
+Outcome <- tourn_result[,8:15] 
+Outcome[,3:8] <- NA    
+#Round2 <- rep(NA,64)
+
+
+for (i in 1:32){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game == i)]
+  stats1 <-  tourn_result$Round2[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Round2[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Round2[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Round2[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Round2[which(tourn_result$TeamID_Year == team[1])] <-  "W"
+    Outcome$Round2[which(tourn_result$TeamID_Year == team[2])] <- "L"
+  }
+  #Outcome <- cbind(Outcome, Round2)
+}
+# Need to add method the give win to higher IF sTAT1 == sTAT2
+for (i in 1:16){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game2 == i)]
+  team <- team[team %in% Outcome$TeamID_Year[Outcome$Round2 == "W"]]
+  stats1 <-  tourn_result$Round3[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Round3[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Round3[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Round3[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Round3[which(tourn_result$TeamID_Year == team[1])] <-  "W"
+    Outcome$Round3[which(tourn_result$TeamID_Year == team[2])] <- "L"
+  }
+}
+for (i in 1:8){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game3 == i)]
+  team <- team[team %in% Outcome$TeamID_Year[Outcome$Round3 == "W"]]
+  stats1 <-  tourn_result$Round4[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Round4[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Round4[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Round4[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Round4[which(tourn_result$TeamID_Year == team[1])] <-  "W"
+    Outcome$Round4[which(tourn_result$TeamID_Year == team[2])] <- "L"
+  }
+}
+for (i in 1:4){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game4 == i)]
+  team <- team[team %in% Outcome$TeamID_Year[Outcome$Round4 == "W"]]
+  stats1 <-  tourn_result$Round5[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Round5[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Round5[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Round5[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Round5[which(tourn_result$TeamID_Year == team[1])] <-  "W"
+    Outcome$Round5[which(tourn_result$TeamID_Year == team[2])] <- "L"
+  }
+}
+for (i in 1:2){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game5 == i)]
+  team <- team[team %in% Outcome$TeamID_Year[Outcome$Round5 == "W"]]
+  stats1 <-  tourn_result$Round6[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Round6[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Round6[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Round6[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Round6[which(tourn_result$TeamID_Year == team[1])] <-  "W"
+    Outcome$Round6[which(tourn_result$TeamID_Year == team[2])] <- "L"
+  }
+}
+for (i in 1:1){
+  team <-  tourn_result$TeamID_Year[which(tourn_result$Game6 == i)]
+  team <- team[team %in% Outcome$TeamID_Year[Outcome$Round6 == "W"]]
+  stats1 <-  tourn_result$Champion[tourn_result$TeamID_Year == team[1]]
+  stats2 <-  tourn_result$Champion[tourn_result$TeamID_Year == team[2]]
+  
+    if (stats1 < stats2){
+    Outcome$Champion[which(tourn_result$TeamID_Year == team[2])] <-  "W"
+    Outcome$Champion[which(tourn_result$TeamID_Year == team[1])] <- "L" 
+    }else{
+    Outcome$Champion[which(tourn_result$TeamID_Year == team[1])] <-  "W"
+    Outcome$Champion[which(tourn_result$TeamID_Year == team[2])] <- "L"
+  }
+}
+Outcome[is.na(Outcome)] <- "NC" #NC meaning not continued.
+Outcome$TeamID <-  str_split_fixed(Outcome$TeamID_Year, pattern = " ", 2)[,2]
+Team_names <-  read.csv("https://www.dropbox.com/s/2mabrsebsh9p227/MTeams.csv?dl=1")
+Team_names <-  Team_names[,1:2]
+Outcome <- merge(Outcome, Team_names, by.x = "TeamID", by.y = "TeamID", all.x = TRUE)
+Outcome <- Outcome[,c(10,1:9)]
+
+return(Outcome)
+}
+  
+```
+
+```{r}
+Outcome <-  Tourn_function(tourn_result = tourn_result)
+```
+
+
+
